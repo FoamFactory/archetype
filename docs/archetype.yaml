@@ -38,7 +38,7 @@ components:
           type: string
           description: |
             The MIME type of the image data. Must be one of 'image/jpeg' or 'image/png'.
-        avatar:
+        image:
           type: string
           description: 'A base64 encoded representation of the image that will serve as the avatar.'
           example: |

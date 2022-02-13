@@ -1,0 +1,61 @@
+openapi: 3.0.3
+info:
+  title: Archetype
+  description: The User Avatar service for FoamFactory
+  version: 1.0.0
+servers:
+  - url: https://archetype.foamfactory.io/v0
+    description: |
+      # Production Server
+      This utilizes live data. No testing should happen on the production systems, as it can affect client functionality. This is provided solely for the ability to debug issues with the client interfacing with the API.
+  - url: https://stage.archetype.foamfactory.io/v0
+    description: |
+      # Staging Server
+      This utilizes data that is _reasonably stable_, but can be used for final testing. Most of the data that is in this database will remain in place for all users using the staging server, and it's expected that, in time, some power users will decide to utilize the staging server to get advanced features that aren't currently in production.
+  - url: https://dev.archetype.foamfactory.io/v0
+    description: |
+      # Development Server
+      This data is completely unreliable. It should _never_ be assumed that it will be consistent. Instead, this is data that is used for integration testing operations by development staff, after basic testing has been done locally on development machines.
+components:
+  responses:
+    UserAvatarList:
+      description: 'Response containing an array of `UserAvatar` objects'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UserAvatarList'
+  schemas:
+    UserAvatar:
+      description: |
+        An object containing the data relevant for a user's avatar.
+      type: object
+      properties:
+        id:
+          type: number
+          description: 'The database ID of the record. Guaranteed to be unique over all `UserAvatar` objects.'
+          example: 1234
+        mimetype:
+          type: string
+          description: |
+            The MIME type of the image data. Must be one of 'image/jpeg' or 'image/png'.
+        avatar:
+          type: string
+          description: 'A base64 encoded representation of the image that will serve as the avatar.'
+          example: |
+            iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAABj2lDQ1BJQ0MgcHJvZmlsZQAAKJF9kb1Lw1AUxU9TxSotIjqIdMhQHcSCKIiDi1UsQoVSK1h1MHnph5CkIUlxcRRcCw6ii1+D/gGiq4OrIAiKIOLkH+DXIiXelwRapPXB4/5ycu/hvfMA4VxlmtU2Cmi6bWaSCXE5tyJ2vEFABD0Io1NiljGdTqfQcn0/IMDrfZx7te5ruiJK3mJAQCSeY4ZpE5eIJzZtg/MRcR8rSQrxBfGISQckfuW67PEn56LLQoizmc3MEEeJxWIDyw3MSqZGPEUcUzSd/IV1jxXO25w1tcL8c/IbhvP60iLVYdpRJKFiAxoMWMhDhIwKfauwEaeqk2IhQ10Jyra5z4Drk6Y52fViNDOLMnlKrgP4W/zN2CqMj3lOYXJuf3Gcj0GgYxeoVR3n59hxaidA8Bm41uvzZcpx8ov0al2LHQLddM/Lm7om7wFXO0D/kyGZkisFaQuFAvB+Rs+VA3rvgK5VLz//P04fgewWkLoF9g+AoSJ5r7W4d8jPbx4LSP/b4yf4C4vSdIzDS13OAAAACXBIWXMAAC4jAAAuIwF4pT92AAAAB3RJTUUH5gINEQwu6eRSBgAAABx0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR2xpbXBzZe5OGAcAAAAUSURBVBjTY/x/jgEPYGJgGJXGBAA5EwHhXz/1YwAAAABJRU5ErkJggg==
+    UserAvatarList:
+      description: |
+        An array of `UserAvatar` objects
+      type: array
+      items:
+        $ref: '#/components/schemas/UserAvatar'
+paths:
+  /avatars:
+    get:
+      summary: 'List all avatars in the system'
+      description: |
+        Retrieves a listing of all user avatar objects in the system.
+      responses:
+        '200':
+          $ref: '#/components/responses/UserAvatarList'
+

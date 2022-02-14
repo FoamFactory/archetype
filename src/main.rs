@@ -1,11 +1,11 @@
 #![feature(decl_macro)]
 #[macro_use] extern crate rocket;
+#[macro_use] extern crate serde;
+#[macro_use] extern crate serde_json;
 
 #[macro_use]
 extern crate diesel;
 use self::diesel::prelude::*;
-// use crate::diesel::QueryDsl;
-// use crate::diesel::query_dsl::limit_dsl::LimitDsl;
 
 extern crate dotenv;
 
@@ -20,21 +20,20 @@ pub mod models;
 use crate::util::{get_data_uri_for_avatar, get_version_code_from_string};
 
 use db::*;
-use crate::models::Avatar;
+use crate::models::{Avatar, AvatarInfo, VersionInfo};
 
 // Endpoint Definitions
 #[get("/version")]
 fn version() -> Json<String> {
     let pkg_name = env!("CARGO_PKG_NAME");
     let pkg_version = env!("CARGO_PKG_VERSION");
-    let version_info = format!(r#"
-      "name": "{}",
-      "version": "{}",
-      "version_code": {}
-    "#, pkg_name, pkg_version, get_version_code_from_string(pkg_version));
-    let mut json_obj = String::from("{");
-    json_obj.push_str(version_info.as_str());
-    json_obj.push_str("}");
+    let version_info = VersionInfo {
+        name: String::from(pkg_name),
+        version: String::from(pkg_version),
+        version_code: get_version_code_from_string(pkg_version)
+    };
+
+    let json_obj = serde_json::to_string(&version_info).unwrap();
     Json(json_obj)
 }
 
@@ -49,16 +48,8 @@ fn get_avatar_by_id(query_id: i32) -> Json<String> {
         .load::<Avatar>(&connection)
         .expect("Error loading avatar");
 
-    let json_body = format!(r#"
-        "id": {},
-        "image": "{}",
-        "mimetype": "{}",
-        "created": "{}",
-        "data_uri": "{}"
-    "#, results[0].id, results[0].image, results[0].mimetype, results[0].created, get_data_uri_for_avatar(&results[0]));
-    let mut json_obj = String::from("{");
-    json_obj.push_str(json_body.as_str());
-    json_obj.push_str("}");
+    let avatar_info = AvatarInfo::from(&results[0]);
+    let json_obj = serde_json::to_string(&avatar_info).unwrap();
     Json(json_obj)
 }
 
@@ -66,6 +57,4 @@ fn main() {
     rocket::ignite()
         .mount("/", routes![version, get_avatar_by_id])
         .launch();
-
-    // get_avatar_by_id(1)
 }

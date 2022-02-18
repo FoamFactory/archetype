@@ -18,6 +18,46 @@ servers:
       This data is completely unreliable. It should _never_ be assumed that it will be consistent. Instead, this is data that is used for integration testing operations by development staff, after basic testing has been done locally on development machines.
 components:
   responses:
+    Avatar:
+      description: |
+        Response containing a single `UserAvatar` object
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UserAvatar'
+    BadRequest:
+      description: |
+        The parameters given for the particular request were not correct.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DetailedErrorMessage'
+              - properties:
+                  error:
+                    example: 'File Corrupted'
+    UnsupportedMediaType:
+      description: |
+        Returned if an image is sent with a mime type other than `image/jpeg` or `image/png`.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DetailedErrorMessage'
+              - properties:
+                  error:
+                    example: 'Image data sent is not in PNG or JPG format'
+    NotFoundError:
+      description: |
+        The record with the requested `id` was not found in the system.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DetailedErrorMessage'
+              - properties:
+                  error:
+                    example: 'A record of type Avatar having id 111 was not found'
     UserAvatarList:
       description: 'Response containing an array of `UserAvatar` objects'
       content:
@@ -25,6 +65,14 @@ components:
           schema:
             $ref: '#/components/schemas/UserAvatarList'
   schemas:
+    DetailedErrorMessage:
+      description: 'An object containing  a more specific internal error code and a detailed message to the client about what occurred on the server.'
+      type: object
+      properties:
+        error:
+          description: 'A human-readable message to the client indicating what specifically happened.'
+          type: string
+          example: 'Some example message'
     UserAvatar:
       description: |
         An object containing the data relevant for a user's avatar.
@@ -55,6 +103,43 @@ components:
       items:
         $ref: '#/components/schemas/UserAvatar'
 paths:
+  /avatar:
+    get:
+      parameters:
+        - name: id
+          in: path
+          description: |
+            Database `id` of the `Avatar` to retrieve
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          $ref: '#/components/responses/Avatar'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    post:
+      summary: 'Create a new avatar'
+      description: |
+          Create a new avatar and store it in the system.
+      requestBody:
+        content:
+          'image/jpeg':
+            schema:
+              type: string
+              format: binary
+          'image/png':
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          $ref: '#/components/responses/Avatar'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
   /avatars:
     get:
       summary: 'List all avatars in the system'

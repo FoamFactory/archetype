@@ -10,12 +10,20 @@ use self::diesel::prelude::*;
 extern crate dotenv;
 
 use std::process::id;
+use rocket::response::Debug;
+use rocket::data::{Data, ToByteUnit};
 use rocket::response::content::Json;
+use std::io::{Error, Write};
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use base64::write::EncoderStringWriter;
+use rocket::response::status;
 
 pub mod util;
 pub mod db;
 pub mod schema;
 pub mod models;
+pub mod responders;
 
 use crate::util::{get_data_uri_for_avatar, get_version_code_from_string};
 
@@ -46,6 +54,49 @@ fn get_avatar_by_id(query_id: i32) -> Json<String> {
     Json(json_obj)
 }
 
+//noinspection ALL
+#[post("/avatar", data = "<upload_file>")]
+async fn upload_new_avatar(upload_file: Data<'_>) -> Result<Json<String>, responders::RequestError>  {
+    use responders::RequestErrorMessage;
+
+    let mut buffer: Vec<u8> = vec![];
+    let written = upload_file.open(512.kibibytes())
+        .stream_to(&mut buffer).await;
+    if written.is_err() {
+        return Err(responders::RequestError::from((400, "File Corrupted")));
+    }
+
+    // Infer mime type
+    let mut error_msg: Option<&'static str> = None;
+    let kind_opt = infer::get(&buffer);
+    if kind_opt.is_none() {
+        error_msg = Some("Unable to infer mime type from given data");
+    }
+
+    let kind = kind_opt.unwrap();
+    if kind.mime_type() != "image/jpeg" && kind.mime_type() != "image/png" {
+        error_msg = Some("Image data sent is not in PNG or JPG format");
+    }
+
+    if error_msg.is_some() {
+        return Err(responders::RequestError::from((415, error_msg.unwrap())));
+    }
+
+    let mut enc = base64::write::EncoderStringWriter::new(base64::STANDARD);
+    enc.write_all(buffer.as_slice());
+    let b64_string = enc.into_inner();
+
+    // Connect to the database
+    let conn: SqliteConnection = establish_connection(None);
+
+    // Create a new Avatar object and put it in the database
+    let avt: Avatar = Avatar::create(kind.mime_type(), &b64_string, &conn);
+
+    let info = AvatarInfo::from(&avt);
+    let json_obj = serde_json::to_string(&info).unwrap();
+    Ok(Json(json_obj))
+}
+
 fn get_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) -> Avatar {
     use crate::schema::avatars::dsl::*;
 
@@ -73,11 +124,11 @@ fn get_all_avatars_with_connection(conn: &SqliteConnection) -> Vec<Avatar> {
     results
 }
 
-fn main() {
+#[launch]
+fn rocket() -> _ {
     let connection = establish_connection(None);
-    rocket::ignite()
-        .mount("/", routes![version, get_avatar_by_id])
-        .launch();
+    rocket::build()
+        .mount("/", routes![version, get_avatar_by_id, upload_new_avatar])
 }
 
 #[cfg(test)]

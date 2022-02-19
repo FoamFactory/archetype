@@ -18,6 +18,7 @@ use std::io::{Error, Write};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use base64::write::EncoderStringWriter;
+use rocket::{Build, Request, Rocket};
 use rocket::response::status;
 use rocket::response::status::NotFound;
 
@@ -34,7 +35,7 @@ use crate::util::{get_data_uri_for_avatar, get_version_code_from_string};
 
 use db::*;
 use crate::models::{Avatar, AvatarInfo, ResponseMessage, VersionInfo};
-use crate::responders::RequestError;
+use crate::responders::{JsonRetriever, RequestError};
 
 // Endpoint Definitions
 #[get("/version")]
@@ -76,7 +77,6 @@ fn get_avatar_by_id(query_id: i32, allowed_hosts: AllowedHosts) -> Result<Json<S
     Ok(Json(json_obj))
 }
 
-//noinspection ALL
 #[post("/avatar", data = "<upload_file>")]
 async fn upload_new_avatar(upload_file: Data<'_>, allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
     use responders::RequestErrorMessage;
@@ -119,6 +119,7 @@ async fn upload_new_avatar(upload_file: Data<'_>, allowed_hosts: AllowedHosts) -
     Ok(Json(json_obj))
 }
 
+// Endpoint Utility Functions
 fn delete_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) {
     use crate::schema::avatars::dsl::*;
     let deleted_rows = diesel::delete(avatars.filter(id.eq(query_id))).execute(conn);
@@ -155,8 +156,27 @@ fn get_all_avatars_with_connection(conn: &SqliteConnection) -> Vec<Avatar> {
     results
 }
 
+// Error Catchers
+#[catch(403)]
+async fn forbidden(req: &Request<'_>) -> Json<String> {
+    let def_req_error = r#"
+    {
+        message: "Access Denied"
+    }
+    "#;
+    let mut json_string = String::from(def_req_error);
+    let guard_result = req.guard::<AllowedHosts>().await;
+    if guard_result.is_failure() {
+        let status_gd_result= guard_result.failed().unwrap();
+        let req_json = status_gd_result.1.get_json();
+        json_string = String::from(&req_json.0);
+    }
+    Json(json_string)
+}
+
+// Main Function Replacement
 #[launch]
-fn rocket() -> _ {
+fn rocket() -> Rocket<Build> {
     let connection = establish_connection(None);
     rocket::build()
         .mount("/", routes![
@@ -165,6 +185,7 @@ fn rocket() -> _ {
             get_avatar_by_id,
             upload_new_avatar,
         ])
+        .register("/", catchers![forbidden])
 }
 
 #[cfg(test)]

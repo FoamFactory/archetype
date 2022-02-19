@@ -1,6 +1,20 @@
 version: "3.9"
 services:
   web:
-    build: .
+    environment:
+      ARCHETYPE_MODE: "development"
+      ARCHETYPE_ALLOWED_HOSTS: "0.0.0.0"
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+#    depends_on:
+#      - db
     ports:
       - "8000:8000"
+#  db:
+#    build:
+#      context: .
+#      dockerfile: ./docker/Dockerfile.db
+#    volumes:
+#      - './db:/usr/src/archetype/db'
+

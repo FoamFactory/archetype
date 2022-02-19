@@ -3,10 +3,16 @@ use rocket::Request;
 use rocket::response::content::Json;
 use rocket::response::status;
 
-#[derive(Responder)]
+#[derive(Debug, Responder)]
 pub enum RequestError {
-    #[response(status = 401, content_type = "json")]
+    #[response(status = 400, content_type = "json")]
     BadRequest(Json<String>),
+
+    #[response(status = 403, content_type = "json")]
+    Forbidden(Json<String>),
+
+    #[response(status = 404, content_type = "json")]
+    NotFound(Json<String>),
 
     #[response(status = 415, content_type = "json")]
     UnsupportedMediaType(Json<String>),
@@ -23,6 +29,7 @@ impl From<(u16, &str)> for RequestError {
 
         let json_obj = serde_json::to_string(&req_err_msg).unwrap();
         match code {
+            404 => RequestError::NotFound((Json(json_obj))),
             415 => RequestError::UnsupportedMediaType(Json(json_obj)),
             _ => RequestError::BadRequest(Json(json_obj))
         }

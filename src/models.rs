@@ -64,3 +64,8 @@ pub struct VersionInfo {
     pub version_code: u32,
     pub version: String,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct ResponseMessage {
+    pub message: String
+}

@@ -1,0 +1,14 @@
+FROM rustlang/rust:nightly
+
+WORKDIR /usr/src/archetype
+COPY . .
+
+RUN apt-get -y update
+RUN apt-get -y upgrade
+RUN apt-get install -y sqlite3 libsqlite3-dev
+
+RUN cargo install --path .
+RUN cargo install diesel_cli
+RUN diesel migration run
+
+CMD ["archetype"]

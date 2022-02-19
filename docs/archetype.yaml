@@ -1,21 +1,12 @@
 openapi: 3.0.3
 info:
   title: Archetype
-  description: The User Avatar service for FoamFactory
+  description: A User Avatar service, designed for FoamFactory, usable for anything
   version: 1.0.0
-servers:
-  - url: https://archetype.foamfactory.io/v0
+tags:
+  - name: Avatars
     description: |
-      # Production Server
-      This utilizes live data. No testing should happen on the production systems, as it can affect client functionality. This is provided solely for the ability to debug issues with the client interfacing with the API.
-  - url: https://stage.archetype.foamfactory.io/v0
-    description: |
-      # Staging Server
-      This utilizes data that is _reasonably stable_, but can be used for final testing. Most of the data that is in this database will remain in place for all users using the staging server, and it's expected that, in time, some power users will decide to utilize the staging server to get advanced features that aren't currently in production.
-  - url: https://dev.archetype.foamfactory.io/v0
-    description: |
-      # Development Server
-      This data is completely unreliable. It should _never_ be assumed that it will be consistent. Instead, this is data that is used for integration testing operations by development staff, after basic testing has been done locally on development machines.
+      Methods used to affect records of Avatars in the database.
 components:
   responses:
     Avatar:
@@ -47,6 +38,18 @@ components:
               - properties:
                   error:
                     example: 'Image data sent is not in PNG or JPG format'
+    Success:
+      description: | 
+        A message indicating that the operation succeeded.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Message'
+              - properties:
+                  message:
+                    example:
+                      'Successfully deleted Avatar with id 3'
     NotFoundError:
       description: |
         The record with the requested `id` was not found in the system.
@@ -66,13 +69,21 @@ components:
             $ref: '#/components/schemas/UserAvatarList'
   schemas:
     DetailedErrorMessage:
-      description: 'An object containing  a more specific internal error code and a detailed message to the client about what occurred on the server.'
+      description: 'An object containing a more specific internal error code and a detailed message to the client about what occurred on the server.'
       type: object
       properties:
         error:
           description: 'A human-readable message to the client indicating what specifically happened.'
           type: string
           example: 'Some example message'
+    Message:
+      description: 'An object containing a simple message'
+      type: object
+      properties:
+        message:
+          description: 'A human-readable message'
+          type: string
+          example: "Successfully deleted 1 record"
     UserAvatar:
       description: |
         An object containing the data relevant for a user's avatar.
@@ -104,7 +115,28 @@ components:
         $ref: '#/components/schemas/UserAvatar'
 paths:
   /avatar:
+    delete:
+      summary: Delete a user's avatar by identifier
+      tags:
+        - Avatars
+      parameters:
+        - name: id
+          in: path
+          description: |
+            Database `id` of the `Avatar` to remove
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
     get:
+      summary: Retrieve a user's avatar by identifier
+      tags:
+        - Avatars
       parameters:
         - name: id
           in: path
@@ -120,6 +152,8 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
     post:
+      tags:
+        - Avatars
       summary: 'Create a new avatar'
       description: |
           Create a new avatar and store it in the system.
@@ -142,6 +176,8 @@ paths:
           $ref: '#/components/responses/UnsupportedMediaType'
   /avatars:
     get:
+      tags:
+        - Avatars
       summary: 'List all avatars in the system'
       description: |
         Retrieves a listing of all user avatar objects in the system.

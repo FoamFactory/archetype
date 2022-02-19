@@ -1,4 +1,5 @@
 #![feature(decl_macro)]
+#![feature(in_band_lifetimes)]
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate serde;
 #[macro_use] extern crate serde_json;
@@ -18,21 +19,26 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use base64::write::EncoderStringWriter;
 use rocket::response::status;
+use rocket::response::status::NotFound;
 
 pub mod util;
 pub mod db;
 pub mod schema;
 pub mod models;
 pub mod responders;
+pub mod guards;
+
+use crate::guards::AllowedHosts;
 
 use crate::util::{get_data_uri_for_avatar, get_version_code_from_string};
 
 use db::*;
-use crate::models::{Avatar, AvatarInfo, VersionInfo};
+use crate::models::{Avatar, AvatarInfo, ResponseMessage, VersionInfo};
+use crate::responders::RequestError;
 
 // Endpoint Definitions
 #[get("/version")]
-fn version() -> Json<String> {
+fn version(allowed_hosts: AllowedHosts) -> Json<String> {
     let pkg_name = env!("CARGO_PKG_NAME");
     let pkg_version = env!("CARGO_PKG_VERSION");
     let version_info = VersionInfo {
@@ -45,18 +51,34 @@ fn version() -> Json<String> {
     Json(json_obj)
 }
 
+#[delete("/avatar/<query_id>")]
+fn delete_avatar_by_id(query_id: i32, allowed_hosts: AllowedHosts) -> Json<String> {
+    let connection = establish_connection(None);
+    delete_avatar_by_id_with_connection(&connection, query_id);
+    let response_message = ResponseMessage {
+        message: format!("Avatar with id {} deleted", query_id)
+    };
+    let json_obj = serde_json::to_string(&response_message).unwrap();
+    Json(json_obj)
+}
+
 #[get("/avatar/<query_id>")]
-fn get_avatar_by_id(query_id: i32) -> Json<String> {
+fn get_avatar_by_id(query_id: i32, allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError> {
     let connection = establish_connection(None);
     let avatar_result = get_avatar_by_id_with_connection(&connection, query_id);
-    let avatar_info = AvatarInfo::from(&avatar_result);
+    if avatar_result.is_err() {
+        return Err(avatar_result.err().unwrap());
+    }
+
+    let avatar = avatar_result.unwrap();
+    let avatar_info = AvatarInfo::from(&avatar);
     let json_obj = serde_json::to_string(&avatar_info).unwrap();
-    Json(json_obj)
+    Ok(Json(json_obj))
 }
 
 //noinspection ALL
 #[post("/avatar", data = "<upload_file>")]
-async fn upload_new_avatar(upload_file: Data<'_>) -> Result<Json<String>, responders::RequestError>  {
+async fn upload_new_avatar(upload_file: Data<'_>, allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
     use responders::RequestErrorMessage;
 
     let mut buffer: Vec<u8> = vec![];
@@ -97,7 +119,12 @@ async fn upload_new_avatar(upload_file: Data<'_>) -> Result<Json<String>, respon
     Ok(Json(json_obj))
 }
 
-fn get_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) -> Avatar {
+fn delete_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) {
+    use crate::schema::avatars::dsl::*;
+    let deleted_rows = diesel::delete(avatars.filter(id.eq(query_id))).execute(conn);
+}
+
+fn get_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) -> Result<Avatar, RequestError> {
     use crate::schema::avatars::dsl::*;
 
     let results = avatars
@@ -106,12 +133,16 @@ fn get_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) -> A
         .load::<Avatar>(conn)
         .expect("Error loading avatar");
 
+    if results.is_empty() {
+        return Err(RequestError::from((404, format!("Unable to find avatar with id {}", query_id).as_str())));
+    }
+
     let avatar_result = results
         .into_iter()
         .next()
         .expect("Expected at least one item within the results");
 
-    avatar_result
+    Ok(avatar_result)
 }
 
 fn get_all_avatars_with_connection(conn: &SqliteConnection) -> Vec<Avatar> {
@@ -128,7 +159,12 @@ fn get_all_avatars_with_connection(conn: &SqliteConnection) -> Vec<Avatar> {
 fn rocket() -> _ {
     let connection = establish_connection(None);
     rocket::build()
-        .mount("/", routes![version, get_avatar_by_id, upload_new_avatar])
+        .mount("/", routes![
+            version,
+            delete_avatar_by_id,
+            get_avatar_by_id,
+            upload_new_avatar,
+        ])
 }
 
 #[cfg(test)]

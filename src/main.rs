@@ -1,11 +1,11 @@
 #[macro_use] extern crate rocket;
 
+use diesel::MysqlConnection;
 use rocket::data::Data;
 use rocket::response::content::Json;
-use diesel::SqliteConnection;
 use rocket::{Build, catchers, Request, Rocket, routes};
 use archetype_lib::db::establish_connection;
-use archetype_lib::{delete_avatar_by_id_with_connection, get_avatar_by_id_with_connection, get_file_as_base64_encoded_string, responders, update_avatar_by_id_with_connection};
+use archetype_lib::{delete_avatar_by_id_with_connection, get_all_avatars_with_connection, get_avatar_by_id_with_connection, get_file_as_base64_encoded_string, responders, update_avatar_by_id_with_connection};
 use archetype_lib::models::{Avatar, AvatarInfo, ResponseMessage, VersionInfo};
 use archetype_lib::util::get_version_code_from_string;
 
@@ -57,7 +57,7 @@ async fn put_avatar(query_id: i32, upload_file: Data<'_>, _allowed_hosts: Allowe
     let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file).await?;
 
     // Connect to the database
-    let conn: SqliteConnection = establish_connection(None);
+    let conn: MysqlConnection = establish_connection(None);
 
     let avt: Avatar = update_avatar_by_id_with_connection(&conn,
                                                           query_id,
@@ -68,12 +68,29 @@ async fn put_avatar(query_id: i32, upload_file: Data<'_>, _allowed_hosts: Allowe
     Ok(Json(json_obj))
 }
 
+// TODO_jwir3: So.. this could result in a LOT of data being sent over the wire. Perhaps we should
+//             only return the ids of the avatars, along with the metadata? Or, at the very least,
+//             page the data...
+#[get("/avatars")]
+fn get_all_avatars(_allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError> {
+    // Connect to the database
+    let conn: MysqlConnection = establish_connection(None);
+
+    let avts: Vec<Avatar> = get_all_avatars_with_connection(&conn);
+
+    let av_infos: Vec<AvatarInfo> = avts.into_iter()
+        .map(|av| AvatarInfo::from(&av))
+        .collect();
+    let json_obj = serde_json::to_string(&av_infos).unwrap();
+    Ok(Json(json_obj))
+}
+
 #[post("/avatar", data = "<upload_file>")]
 async fn upload_new_avatar(upload_file: Data<'_>, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
     let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file).await?;
 
     // Connect to the database
-    let conn: SqliteConnection = establish_connection(None);
+    let conn: MysqlConnection = establish_connection(None);
 
     // Create a new Avatar object and put it in the database
     let avt: Avatar = Avatar::create(kind.mime_type(), &b64_string, &conn);
@@ -111,6 +128,7 @@ fn rocket() -> Rocket<Build> {
             get_avatar_by_id,
             upload_new_avatar,
             put_avatar,
+            get_all_avatars,
         ])
         .register("/", catchers![forbidden])
 }

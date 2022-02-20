@@ -6,7 +6,7 @@
 extern crate dotenv;
 
 use std::io::Write;
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection};
+use diesel::{ExpressionMethods, MysqlConnection, QueryDsl, RunQueryDsl};
 use infer::Type;
 use rocket::Data;
 use rocket::data::ToByteUnit;
@@ -56,13 +56,13 @@ pub async fn get_file_as_base64_encoded_string(file: Data<'_>) -> Result<(String
     Ok((b64_string, kind))
 }
 
-pub fn delete_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) {
+pub fn delete_avatar_by_id_with_connection(conn: &MysqlConnection, query_id: i32) {
     use crate::schema::avatars::dsl::*;
 
     let _deleted_rows = diesel::delete(avatars.filter(id.eq(query_id))).execute(conn);
 }
 
-pub fn get_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) -> Result<Avatar, RequestError> {
+pub fn get_avatar_by_id_with_connection(conn: &MysqlConnection, query_id: i32) -> Result<Avatar, RequestError> {
     use crate::schema::avatars::dsl::*;
 
     let results = avatars
@@ -83,7 +83,7 @@ pub fn get_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) 
     Ok(avatar_result)
 }
 
-pub fn get_all_avatars_with_connection(conn: &SqliteConnection) -> Vec<Avatar> {
+pub fn get_all_avatars_with_connection(conn: &MysqlConnection) -> Vec<Avatar> {
     use crate::schema::avatars::dsl::*;
 
     let results = avatars
@@ -93,7 +93,7 @@ pub fn get_all_avatars_with_connection(conn: &SqliteConnection) -> Vec<Avatar> {
     results
 }
 
-pub fn update_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32, with_image: String, with_mime_type: String) -> Result<Avatar, RequestError> {
+pub fn update_avatar_by_id_with_connection(conn: &MysqlConnection, query_id: i32, with_image: String, with_mime_type: String) -> Result<Avatar, RequestError> {
     use crate::schema::avatars::dsl::*;
 
     let update_result = diesel::update(avatars.filter(id.eq(query_id)))

@@ -1,4 +1,4 @@
-use diesel::{ExpressionMethods, insert_into, QueryDsl, RunQueryDsl, SqliteConnection};
+use diesel::{ExpressionMethods, insert_into, MysqlConnection, QueryDsl, RunQueryDsl};
 use crate::schema::avatars;
 
 use serde::{Deserialize, Serialize};
@@ -10,11 +10,11 @@ pub struct Avatar {
     pub id: i32,
     pub mimetype: String,
     pub image: String,
-    pub created: String,
+    pub created: chrono::NaiveDateTime,
 }
 
 impl Avatar {
-    pub fn create(with_mimetype: &str, with_image: &str, conn: &SqliteConnection) -> Avatar {
+    pub fn create(with_mimetype: &str, with_image: &str, conn: &MysqlConnection) -> Avatar {
         use crate::schema::avatars::dsl::*;
 
         let _inserted_count = insert_into(avatars_dsl)
@@ -50,7 +50,7 @@ impl From<&Avatar> for AvatarInfo {
             id: avatar.id,
             mimetype: String::from(&avatar.mimetype),
             image: String::from(&avatar.image),
-            created: String::from(&avatar.created),
+            created: avatar.created.format("%Y-%m-%d %H:%M:%S.%f").to_string(),
             data_uri: get_data_uri_for_avatar(&avatar)
         }
     }

@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use dotenv::dotenv;
 use std::env;
 
-pub fn establish_connection(database_name: Option<String>) -> SqliteConnection {
+pub fn establish_connection(database_name: Option<String>) -> MysqlConnection {
     dotenv().ok();
 
     let database_url;
@@ -13,6 +13,6 @@ pub fn establish_connection(database_name: Option<String>) -> SqliteConnection {
         database_url = format!("db/{}", database_name.unwrap());
     }
 
-    SqliteConnection::establish(&database_url)
+    MysqlConnection::establish(&database_url)
         .expect(&format!("Error connecting to {}", database_url))
 }

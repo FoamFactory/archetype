@@ -32,6 +32,7 @@ impl JsonRetriever for RequestError {
         }
     }
 }
+
 impl From<(u16, &str)> for RequestError {
     fn from(error_tuple: (u16, &str)) -> Self {
         let (code, message) = error_tuple;

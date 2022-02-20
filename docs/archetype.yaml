@@ -115,6 +115,36 @@ components:
         $ref: '#/components/schemas/UserAvatar'
 paths:
   /avatar:
+    patch:
+      summar: Partially update a user's avatar by identifier
+      tags:
+        - Avatars
+      parameters:
+        - name: id
+          in: path
+          description: |
+            Database `id` of the `Avatar` to update
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          'image/jpeg':
+            schema:
+              type: string
+              format: binary
+          'image/png':
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          $ref: '#/components/responses/Avatar'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
     delete:
       summary: Delete a user's avatar by identifier
       tags:
@@ -127,7 +157,7 @@ paths:
           required: true
           schema:
             type: integer
-            format: int64
+            format: int32
       responses:
         '200':
           $ref: '#/components/responses/Success'
@@ -145,7 +175,7 @@ paths:
           required: true
           schema:
             type: integer
-            format: int64
+            format: int32
       responses:
         '200':
           $ref: '#/components/responses/Avatar'

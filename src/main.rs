@@ -6,6 +6,8 @@
 
 #[macro_use]
 extern crate diesel;
+
+use std::error::Error;
 use self::diesel::prelude::*;
 
 extern crate dotenv;
@@ -14,10 +16,11 @@ use std::process::id;
 use rocket::response::Debug;
 use rocket::data::{Data, ToByteUnit};
 use rocket::response::content::Json;
-use std::io::{Error, Write};
+use std::io::Write;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use base64::write::EncoderStringWriter;
+use infer::Type;
 use rocket::{Build, Request, Rocket};
 use rocket::response::status;
 use rocket::response::status::NotFound;
@@ -77,12 +80,47 @@ fn get_avatar_by_id(query_id: i32, allowed_hosts: AllowedHosts) -> Result<Json<S
     Ok(Json(json_obj))
 }
 
+#[put("/avatar/<query_id>", data = "<upload_file>")]
+async fn put_avatar(query_id: i32, upload_file: Data<'_>, allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError> {
+    use responders::RequestErrorMessage;
+
+    let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file).await?;
+
+    // Connect to the database
+    let conn: SqliteConnection = establish_connection(None);
+
+    let avt: Avatar = update_avatar_by_id_with_connection(&conn,
+                                                          query_id,
+                                                          b64_string,
+                                                          kind.mime_type().to_string())?;
+    let info = AvatarInfo::from(&avt);
+    let json_obj = serde_json::to_string(&info).unwrap();
+    Ok(Json(json_obj))
+}
+
 #[post("/avatar", data = "<upload_file>")]
 async fn upload_new_avatar(upload_file: Data<'_>, allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
     use responders::RequestErrorMessage;
 
+    let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file).await?;
+
+    // Connect to the database
+    let conn: SqliteConnection = establish_connection(None);
+
+    // Create a new Avatar object and put it in the database
+    let avt: Avatar = Avatar::create(kind.mime_type(), &b64_string, &conn);
+
+    let info = AvatarInfo::from(&avt);
+    let json_obj = serde_json::to_string(&info).unwrap();
+    Ok(Json(json_obj))
+}
+
+// Endpoint Utility Functions
+async fn get_file_as_base64_encoded_string(file: Data<'_>) -> Result<(String, Type), RequestError> {
+    use responders::RequestError;
+
     let mut buffer: Vec<u8> = vec![];
-    let written = upload_file.open(512.kibibytes())
+    let written = file.open(512.kibibytes())
         .stream_to(&mut buffer).await;
     if written.is_err() {
         return Err(responders::RequestError::from((400, "File Corrupted")));
@@ -108,18 +146,9 @@ async fn upload_new_avatar(upload_file: Data<'_>, allowed_hosts: AllowedHosts) -
     enc.write_all(buffer.as_slice());
     let b64_string = enc.into_inner();
 
-    // Connect to the database
-    let conn: SqliteConnection = establish_connection(None);
-
-    // Create a new Avatar object and put it in the database
-    let avt: Avatar = Avatar::create(kind.mime_type(), &b64_string, &conn);
-
-    let info = AvatarInfo::from(&avt);
-    let json_obj = serde_json::to_string(&info).unwrap();
-    Ok(Json(json_obj))
+    Ok((b64_string, kind))
 }
 
-// Endpoint Utility Functions
 fn delete_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) {
     use crate::schema::avatars::dsl::*;
     let deleted_rows = diesel::delete(avatars.filter(id.eq(query_id))).execute(conn);
@@ -156,6 +185,37 @@ fn get_all_avatars_with_connection(conn: &SqliteConnection) -> Vec<Avatar> {
     results
 }
 
+fn update_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32, with_image: String, with_mime_type: String) -> Result<Avatar, RequestError> {
+    use crate::schema::avatars::dsl::*;
+
+    let update_result = diesel::update(avatars.filter(id.eq(query_id)))
+        .set((image.eq(with_image), mimetype.eq(with_mime_type)))
+        .execute(conn);
+
+    if update_result.is_err() {
+        return Err(RequestError::from((404, format!("Unable to find avatar with id {}", query_id).as_str())));
+    }
+
+    let result = avatars
+        .filter(id.eq(query_id))
+        .limit(1)
+        .load::<Avatar>(conn);
+
+    if result.is_err() {
+        return Err(RequestError::from((500, format!("Database encountered an error while trying to update: {}", result.err().unwrap().description()).as_str())));
+    }
+
+    let avatar = result.unwrap()
+        .into_iter()
+        .next();
+
+    if avatar.is_none() {
+        return Err(RequestError::from((404, format!("Unable to find avatar with id {}", query_id).as_str())));
+    }
+
+    return Ok(avatar.unwrap())
+}
+
 // Error Catchers
 #[catch(403)]
 async fn forbidden(req: &Request<'_>) -> Json<String> {
@@ -184,6 +244,7 @@ fn rocket() -> Rocket<Build> {
             delete_avatar_by_id,
             get_avatar_by_id,
             upload_new_avatar,
+            put_avatar,
         ])
         .register("/", catchers![forbidden])
 }

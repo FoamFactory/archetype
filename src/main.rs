@@ -1,48 +1,20 @@
-#![feature(decl_macro)]
-#![feature(in_band_lifetimes)]
 #[macro_use] extern crate rocket;
-#[macro_use] extern crate serde;
-#[macro_use] extern crate serde_json;
 
-#[macro_use]
-extern crate diesel;
-
-use std::error::Error;
-use self::diesel::prelude::*;
-
-extern crate dotenv;
-
-use std::process::id;
-use rocket::response::Debug;
-use rocket::data::{Data, ToByteUnit};
+use rocket::data::Data;
 use rocket::response::content::Json;
-use std::io::Write;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use base64::write::EncoderStringWriter;
-use infer::Type;
-use rocket::{Build, Request, Rocket};
-use rocket::response::status;
-use rocket::response::status::NotFound;
+use diesel::SqliteConnection;
+use rocket::{Build, catchers, Request, Rocket, routes};
+use archetype_lib::db::establish_connection;
+use archetype_lib::{delete_avatar_by_id_with_connection, get_avatar_by_id_with_connection, get_file_as_base64_encoded_string, responders, update_avatar_by_id_with_connection};
+use archetype_lib::models::{Avatar, AvatarInfo, ResponseMessage, VersionInfo};
+use archetype_lib::util::get_version_code_from_string;
 
-pub mod util;
-pub mod db;
-pub mod schema;
-pub mod models;
-pub mod responders;
-pub mod guards;
-
-use crate::guards::AllowedHosts;
-
-use crate::util::{get_data_uri_for_avatar, get_version_code_from_string};
-
-use db::*;
-use crate::models::{Avatar, AvatarInfo, ResponseMessage, VersionInfo};
-use crate::responders::{JsonRetriever, RequestError};
+use archetype_lib::guards::AllowedHosts;
+use archetype_lib::responders::JsonRetriever;
 
 // Endpoint Definitions
 #[get("/version")]
-fn version(allowed_hosts: AllowedHosts) -> Json<String> {
+fn version(_allowed_hosts: AllowedHosts) -> Json<String> {
     let pkg_name = env!("CARGO_PKG_NAME");
     let pkg_version = env!("CARGO_PKG_VERSION");
     let version_info = VersionInfo {
@@ -56,7 +28,7 @@ fn version(allowed_hosts: AllowedHosts) -> Json<String> {
 }
 
 #[delete("/avatar/<query_id>")]
-fn delete_avatar_by_id(query_id: i32, allowed_hosts: AllowedHosts) -> Json<String> {
+fn delete_avatar_by_id(query_id: i32, _allowed_hosts: AllowedHosts) -> Json<String> {
     let connection = establish_connection(None);
     delete_avatar_by_id_with_connection(&connection, query_id);
     let response_message = ResponseMessage {
@@ -67,7 +39,7 @@ fn delete_avatar_by_id(query_id: i32, allowed_hosts: AllowedHosts) -> Json<Strin
 }
 
 #[get("/avatar/<query_id>")]
-fn get_avatar_by_id(query_id: i32, allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError> {
+fn get_avatar_by_id(query_id: i32, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError> {
     let connection = establish_connection(None);
     let avatar_result = get_avatar_by_id_with_connection(&connection, query_id);
     if avatar_result.is_err() {
@@ -81,9 +53,7 @@ fn get_avatar_by_id(query_id: i32, allowed_hosts: AllowedHosts) -> Result<Json<S
 }
 
 #[put("/avatar/<query_id>", data = "<upload_file>")]
-async fn put_avatar(query_id: i32, upload_file: Data<'_>, allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError> {
-    use responders::RequestErrorMessage;
-
+async fn put_avatar(query_id: i32, upload_file: Data<'_>, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError> {
     let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file).await?;
 
     // Connect to the database
@@ -99,9 +69,7 @@ async fn put_avatar(query_id: i32, upload_file: Data<'_>, allowed_hosts: Allowed
 }
 
 #[post("/avatar", data = "<upload_file>")]
-async fn upload_new_avatar(upload_file: Data<'_>, allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
-    use responders::RequestErrorMessage;
-
+async fn upload_new_avatar(upload_file: Data<'_>, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
     let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file).await?;
 
     // Connect to the database
@@ -113,107 +81,6 @@ async fn upload_new_avatar(upload_file: Data<'_>, allowed_hosts: AllowedHosts) -
     let info = AvatarInfo::from(&avt);
     let json_obj = serde_json::to_string(&info).unwrap();
     Ok(Json(json_obj))
-}
-
-// Endpoint Utility Functions
-async fn get_file_as_base64_encoded_string(file: Data<'_>) -> Result<(String, Type), RequestError> {
-    use responders::RequestError;
-
-    let mut buffer: Vec<u8> = vec![];
-    let written = file.open(512.kibibytes())
-        .stream_to(&mut buffer).await;
-    if written.is_err() {
-        return Err(responders::RequestError::from((400, "File Corrupted")));
-    }
-
-    // Infer mime type
-    let mut error_msg: Option<&'static str> = None;
-    let kind_opt = infer::get(&buffer);
-    if kind_opt.is_none() {
-        error_msg = Some("Unable to infer mime type from given data");
-    }
-
-    let kind = kind_opt.unwrap();
-    if kind.mime_type() != "image/jpeg" && kind.mime_type() != "image/png" {
-        error_msg = Some("Image data sent is not in PNG or JPG format");
-    }
-
-    if error_msg.is_some() {
-        return Err(responders::RequestError::from((415, error_msg.unwrap())));
-    }
-
-    let mut enc = base64::write::EncoderStringWriter::new(base64::STANDARD);
-    enc.write_all(buffer.as_slice());
-    let b64_string = enc.into_inner();
-
-    Ok((b64_string, kind))
-}
-
-fn delete_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) {
-    use crate::schema::avatars::dsl::*;
-    let deleted_rows = diesel::delete(avatars.filter(id.eq(query_id))).execute(conn);
-}
-
-fn get_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32) -> Result<Avatar, RequestError> {
-    use crate::schema::avatars::dsl::*;
-
-    let results = avatars
-        .filter(id.eq(&query_id))
-        .limit(1)
-        .load::<Avatar>(conn)
-        .expect("Error loading avatar");
-
-    if results.is_empty() {
-        return Err(RequestError::from((404, format!("Unable to find avatar with id {}", query_id).as_str())));
-    }
-
-    let avatar_result = results
-        .into_iter()
-        .next()
-        .expect("Expected at least one item within the results");
-
-    Ok(avatar_result)
-}
-
-fn get_all_avatars_with_connection(conn: &SqliteConnection) -> Vec<Avatar> {
-    use crate::schema::avatars::dsl::*;
-
-    let results = avatars
-        .load::<Avatar>(conn)
-        .expect("Error listing all Avatars");
-
-    results
-}
-
-fn update_avatar_by_id_with_connection(conn: &SqliteConnection, query_id: i32, with_image: String, with_mime_type: String) -> Result<Avatar, RequestError> {
-    use crate::schema::avatars::dsl::*;
-
-    let update_result = diesel::update(avatars.filter(id.eq(query_id)))
-        .set((image.eq(with_image), mimetype.eq(with_mime_type)))
-        .execute(conn);
-
-    if update_result.is_err() {
-        return Err(RequestError::from((404, format!("Unable to find avatar with id {}", query_id).as_str())));
-    }
-
-    let result = avatars
-        .filter(id.eq(query_id))
-        .limit(1)
-        .load::<Avatar>(conn);
-
-    if result.is_err() {
-        return Err(RequestError::from((500, format!("Database encountered an error while trying to update: {}", result.err().unwrap().description()).as_str())));
-    }
-
-    let avatar = result.unwrap()
-        .into_iter()
-        .next();
-
-    if avatar.is_none() {
-        return Err(RequestError::from((404, format!("Unable to find avatar with id {}", query_id).as_str())));
-    }
-
-    return Ok(avatar.unwrap())
 }
 
 // Error Catchers
@@ -237,7 +104,6 @@ async fn forbidden(req: &Request<'_>) -> Json<String> {
 // Main Function Replacement
 #[launch]
 fn rocket() -> Rocket<Build> {
-    let connection = establish_connection(None);
     rocket::build()
         .mount("/", routes![
             version,
@@ -252,6 +118,7 @@ fn rocket() -> Rocket<Build> {
 #[cfg(test)]
 mod tests {
     use diesel::{delete, RunQueryDsl};
+    use archetype_lib::get_all_avatars_with_connection;
     use crate::schema::avatars::dsl::*;
     use crate::{Avatar, establish_connection, get_all_avatars_with_connection, get_avatar_by_id, get_avatar_by_id_with_connection};
 

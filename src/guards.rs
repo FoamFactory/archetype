@@ -1,9 +1,7 @@
-use std::net::IpAddr;
 use rocket::http::Status;
 use rocket::Request;
 use rocket::request::{FromRequest, Outcome};
-use crate::{responders, util};
-use crate::responders::RequestError;
+use crate::{RequestError, util};
 
 // pub struct AllowedHosts<'r>(&'r str);
 pub struct AllowedHosts;

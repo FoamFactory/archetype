@@ -1,7 +1,4 @@
-use rocket::http::{Header, ContentType};
-use rocket::Request;
 use rocket::response::content::Json;
-use rocket::response::status;
 
 pub trait JsonRetriever {
   fn get_json(&self) -> &Json<String>;
@@ -43,7 +40,7 @@ impl From<(u16, &str)> for RequestError {
         let json_obj = serde_json::to_string(&req_err_msg).unwrap();
         match code {
             403 => RequestError::Forbidden(Json(json_obj)),
-            404 => RequestError::NotFound((Json(json_obj))),
+            404 => RequestError::NotFound(Json(json_obj)),
             415 => RequestError::UnsupportedMediaType(Json(json_obj)),
             _ => RequestError::BadRequest(Json(json_obj))
         }

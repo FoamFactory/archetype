@@ -1,3 +1,5 @@
+use diesel::table;
+
 table! {
     avatars (id) {
         id -> Integer,

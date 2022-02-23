@@ -76,7 +76,7 @@ fn get_all_avatars(_allowed_hosts: AllowedHosts) -> Result<Json<String>, respond
     // Connect to the database
     let conn: MysqlConnection = establish_connection(None);
 
-    let avts: Vec<Avatar> = get_all_avatars_with_connection(&conn);
+    let avts: Vec<Avatar> = get_all_avatars_with_connection(&conn)?;
 
     let av_infos: Vec<AvatarInfo> = avts.into_iter()
         .map(|av| AvatarInfo::from(&av))

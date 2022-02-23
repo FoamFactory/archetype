@@ -6,6 +6,7 @@
 extern crate dotenv;
 
 use std::io::Write;
+use std::process::id;
 use diesel::{ExpressionMethods, MysqlConnection, QueryDsl, RunQueryDsl};
 use infer::Type;
 use rocket::Data;
@@ -68,29 +69,35 @@ pub fn get_avatar_by_id_with_connection(conn: &MysqlConnection, query_id: i32) -
     let results = avatars
         .filter(id.eq(&query_id))
         .limit(1)
-        .load::<Avatar>(conn)
-        .expect("Error loading avatar");
+        .load::<Avatar>(conn);
 
-    if results.is_empty() {
+    if results.is_err() {
         return Err(RequestError::from((404, format!("Unable to find avatar with id {}", query_id).as_str())));
     }
 
     let avatar_result = results
         .into_iter()
-        .next()
-        .expect("Expected at least one item within the results");
+        .next();
 
-    Ok(avatar_result)
+    if avatar_result.is_none() {
+        return Err(RequestError::from((404, format!("No avatar found with id: {}", query_id).as_str())));
+    }
+
+    let avatar = avatar_result.unwrap().into_iter().next();
+    Ok(avatar.unwrap())
 }
 
-pub fn get_all_avatars_with_connection(conn: &MysqlConnection) -> Vec<Avatar> {
+pub fn get_all_avatars_with_connection(conn: &MysqlConnection) -> Result<Vec<Avatar>, RequestError> {
     use crate::schema::avatars::dsl::*;
 
-    let results = avatars
-        .load::<Avatar>(conn)
-        .expect("Error listing all Avatars");
+    let results: Result<Vec<Avatar>, _> = avatars
+        .load::<Avatar>(conn);
 
-    results
+    if results.is_err() {
+        return Err(RequestError::from((400, "Unable to retrieve all avatars")));
+    }
+
+    Ok(results.unwrap())
 }
 
 pub fn update_avatar_by_id_with_connection(conn: &MysqlConnection, query_id: i32, with_image: String, with_mime_type: String) -> Result<Avatar, RequestError> {

@@ -1,4 +1,14 @@
-FROM mysql:latest
+FROM mysql:5.7
 
-WORKDIR /usr/src/mysql
-COPY . .
+ARG DATABASE_USER
+ARG DATABASE_PASSWORD
+ARG DATABASE_NAME
+ARG MYSQL_ROOT_PASSWORD
+
+COPY contrib/mysql/init.sql.tmpl /tmp/init.sql.tmpl
+RUN apt-get -y update
+RUN apt-get -y upgrade
+RUN apt-get install -y gettext
+
+RUN cat /tmp/init.sql.tmpl | envsubst > /tmp/init.sql
+RUN mv /tmp/init.sql docker-entrypoint-initdb.d/init.sql

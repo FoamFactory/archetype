@@ -19,6 +19,7 @@ impl<'r> FromRequest<'r> for AllowedHosts {
         }
 
         let remote_machine = request.remote().unwrap();
+        let req_error = RequestError::from((403, format!("Host {} not in allowed list: {:?}", &remote_machine.ip(), allowed_hosts).as_str()));
         if allowed_hosts.contains(&remote_machine.ip()) {
             return Outcome::Success(AllowedHosts {});
         }

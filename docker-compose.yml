@@ -1,20 +1,44 @@
 version: "3.9"
 services:
-  web:
+  db:
+    image: "mysql:5.7"
+    container_name: archetype_db
+    restart: unless-stopped
+    volumes:
+      - ./db:/tmp/database
+    networks:
+      - archetype_net
+    env_file:
+      - .env
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
+
+  web_service:
+    env_file:
+      - .env
     environment:
-      ARCHETYPE_MODE: "development"
-      ARCHETYPE_ALLOWED_HOSTS: "0.0.0.0"
+      - ARCHETYPE_MODE="development"
+      # This should be a decent guess as to the IP address of the bridge on the docker network, but if it isn't working,
+      # try finding the address using:
+      # docker network inspect archetype_archetype_net -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}'
+      - ARCHETYPE_ALLOWED_HOSTS=172.22.0.1
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+      - MYSQL_DATABASE
     build:
       context: .
       dockerfile: Dockerfile.web
-#    depends_on:
-#      - db
+      args:
+        DB_URL: mysql://$MYSQL_USER:$MYSQL_PASSWORD@db/$MYSQL_DATABASE
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "8000:8000"
-#  db:
-#    build:
-#      context: .
-#      dockerfile: ./docker/Dockerfile.db
-#    volumes:
-#      - './db:/usr/src/archetype/db'
-
+    networks:
+      - archetype_net
+networks:
+  archetype_net:
+    driver: bridge

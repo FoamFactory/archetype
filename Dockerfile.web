@@ -1,5 +1,8 @@
 FROM rustlang/rust:nightly
 
+ARG DB_URL
+ENV DATABASE_URL=$DB_URL
+
 WORKDIR /usr/src/archetype
 COPY . .
 
@@ -9,6 +12,6 @@ RUN apt-get install -y sqlite3 libsqlite3-dev
 
 RUN cargo install --path .
 RUN cargo install diesel_cli
-RUN diesel migration run
+#RUN diesel migration run
 
-CMD ["archetype"]
+CMD ["docker/start-web-service.sh"]

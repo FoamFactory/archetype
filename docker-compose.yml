@@ -10,9 +10,9 @@ services:
       - archetype_net
     env_file:
       - .env
-    ports:
+#    ports:
       # Use port 3307 on the host machine so as not to interfere with another mysql server already running
-      - "3307:3306"
+#      - "3307:3306"
     healthcheck:
       test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
 
@@ -30,7 +30,7 @@ services:
       - MYSQL_DATABASE
     build:
       context: .
-      dockerfile: Dockerfile.web
+      dockerfile: docker/Dockerfile.web
       args:
         DB_URL: mysql://$MYSQL_USER:$MYSQL_PASSWORD@db/$MYSQL_DATABASE
     depends_on:

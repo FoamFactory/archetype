@@ -4,14 +4,10 @@ ARG DB_URL
 ENV DATABASE_URL=$DB_URL
 
 WORKDIR /usr/src/archetype
-COPY . .
 
-RUN apt-get -y update
-RUN apt-get -y upgrade
-RUN apt-get install -y sqlite3 libsqlite3-dev
+COPY . .
 
 RUN cargo install --path .
 RUN cargo install diesel_cli
-#RUN diesel migration run
 
 CMD ["docker/start-web-service.sh"]

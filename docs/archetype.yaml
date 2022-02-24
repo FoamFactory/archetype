@@ -39,7 +39,7 @@ components:
                   error:
                     example: 'Image data sent is not in PNG or JPG format'
     Success:
-      description: | 
+      description: |
         A message indicating that the operation succeeded.
       content:
         application/json:
@@ -115,8 +115,33 @@ components:
         $ref: '#/components/schemas/UserAvatar'
 paths:
   /avatar:
-    patch:
-      summar: Partially update a user's avatar by identifier
+    post:
+      tags:
+        - Avatars
+      summary: 'Create a new avatar'
+      description: |
+        Create a new avatar and store it in the system.
+      requestBody:
+        content:
+          'image/jpeg':
+            schema:
+              type: string
+              format: binary
+          'image/png':
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          $ref: '#/components/responses/Avatar'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+
+  /avatar/{id}:
+    put:
+      summary: Partially update a user's avatar by identifier
       tags:
         - Avatars
       parameters:
@@ -181,29 +206,6 @@ paths:
           $ref: '#/components/responses/Avatar'
         '404':
           $ref: '#/components/responses/NotFoundError'
-    post:
-      tags:
-        - Avatars
-      summary: 'Create a new avatar'
-      description: |
-          Create a new avatar and store it in the system.
-      requestBody:
-        content:
-          'image/jpeg':
-            schema:
-              type: string
-              format: binary
-          'image/png':
-            schema:
-              type: string
-              format: binary
-      responses:
-        '200':
-          $ref: '#/components/responses/Avatar'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '415':
-          $ref: '#/components/responses/UnsupportedMediaType'
   /avatars:
     get:
       tags:

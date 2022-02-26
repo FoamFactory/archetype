@@ -1,5 +1,7 @@
 use std::net::IpAddr;
 use std::env;
+use regex::Regex;
+use crate::get_all_avatars_with_connection;
 
 use crate::models::Avatar;
 
@@ -20,38 +22,53 @@ pub fn get_data_uri_for_avatar(avatar: &Avatar) -> String {
     format!("data:{};base64,{}", avatar.mimetype, avatar.image)
 }
 
-pub fn get_allowed_hosts_from_environment() -> Vec<IpAddr> {
-    let ah_string = match env::var("ARCHETYPE_ALLOWED_HOSTS") {
+pub fn is_host_allowed(host: &IpAddr) -> bool {
+    let allowed_host_re_string = match env::var("ARCHETYPE_ALLOWED_HOSTS") {
         Ok(v) => v,
         Err(_e) => "".to_string()
     };
 
-    let allowed_hosts_str: Vec<String> = ah_string.split(",").map(|s| s.to_string()).collect();
-    let allowed_hosts: Vec<IpAddr> = allowed_hosts_str.into_iter()
-        .map(|ah| ah.parse::<IpAddr>())
-        .filter(|r| r.is_ok())
-        .map(|r| r.unwrap())
-        .collect();
+    if allowed_host_re_string.is_empty() {
+        return false;
+    }
 
-    allowed_hosts
+    let allowed_host_re_result = Regex::new(&allowed_host_re_string);
+    if allowed_host_re_result.is_err() {
+        println!("ALLOWED_HOSTS doesn't appear to be a valid regular expression: {}", allowed_host_re_string);
+        return false;
+    }
+
+    let allowed_host_re = allowed_host_re_result.unwrap();
+
+    return allowed_host_re.is_match(&host.to_string());
 }
 
 #[cfg(test)]
 mod tests {
     use std::env;
     use std::net::{IpAddr, Ipv4Addr};
-    use crate::util::get_allowed_hosts_from_environment;
+    use crate::util::{get_allowed_hosts_from_environment, is_host_allowed};
 
     #[test]
     fn it_should_show_that_no_hosts_are_allowed() {
-        let empty_vec: Vec<IpAddr> = vec![];
-        assert_eq!(empty_vec, get_allowed_hosts_from_environment());
+        env::set_var("ARCHETYPE_ALLOWED_HOSTS", "");
+        let ip_addr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+        let host_allowed = is_host_allowed(&ip_addr);
+        assert!(!host_allowed);
     }
 
     #[test]
     fn it_should_show_a_single_allowed_host() {
         env::set_var("ARCHETYPE_ALLOWED_HOSTS", "127.0.0.1");
-        let socket_vec = vec![IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))];
-        assert_eq!(socket_vec, get_allowed_hosts_from_environment());
+        let ip_addr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+        let host_allowed = is_host_allowed(&ip_addr);
+        assert!(host_allowed);
+    }
+
+    #[test]
+    fn it_should_allow_all_hosts_starting_with_172() {
+        env::set_var("ARCHETYPE_ALLOWED_HOSTS", "172\\.([0-9]{1,3})\\.([0-9]{1,3})\\.([0-9]{1,3})");
+        let socket: IpAddr = IpAddr::V4(Ipv4Addr::new(172, 168, 202, 1));
+        assert!(is_host_allowed(&socket));
     }
 }

@@ -21,10 +21,7 @@ services:
       - .env
     environment:
       - ARCHETYPE_MODE="development"
-      # This should be a decent guess as to the IP address of the bridge on the docker network, but if it isn't working,
-      # try finding the address using:
-      # docker network inspect archetype_archetype_net -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}'
-      - ARCHETYPE_ALLOWED_HOSTS=172.22.0.1
+      - ARCHETYPE_ALLOWED_HOSTS=172\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})
       - MYSQL_USER
       - MYSQL_PASSWORD
       - MYSQL_DATABASE

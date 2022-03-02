@@ -1,7 +1,6 @@
 use std::net::IpAddr;
 use std::env;
 use regex::Regex;
-use crate::get_all_avatars_with_connection;
 
 use crate::models::Avatar;
 

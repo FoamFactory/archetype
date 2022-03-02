@@ -40,3 +40,22 @@ FoamFactory offers the following installation and maintenance services for arche
 - Install on a linode instance, **$150** (one-time), plus [linode fees](https://www.linode.com/pricing/)
 
 If you're interested in having us perform the setup for you, please fill out the following [query form](https://forms.gle/FfJtdic2dz2md5bu8) and we'll respond as soon as possible.
+
+# Building
+If you want to build from source, you can clone this project from Github and follow these steps to build. You will need
+docker installed and working (see above) to run the MySQL database. You will additionally need a Rust toolchain installed,
+typically using `rustup`: [Installing Rust](https://www.rust-lang.org/tools/install). As of this writing, the minimum
+`rustc` version required is `1.60.0-nightly`.
+
+1.Start the MySQL database using docker (you may want to change the defaults in `.env`):
+```bash
+docker-compose up db
+```
+2. Specify your database connection url:
+```bash
+export DATABASE_URL=mysql://archetype:<password>@0.0.0.0:3307/archetype_production
+```
+3. Use `cargo` to build and run:
+```bash
+cargo run
+```

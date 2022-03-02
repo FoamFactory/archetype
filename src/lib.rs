@@ -6,7 +6,6 @@
 extern crate dotenv;
 
 use std::io::Write;
-use std::process::id;
 use diesel::{ExpressionMethods, MysqlConnection, QueryDsl, RunQueryDsl};
 use infer::Type;
 use rocket::Data;
@@ -83,7 +82,12 @@ pub fn get_avatar_by_id_with_connection(conn: &MysqlConnection, query_id: i32) -
         return Err(RequestError::from((404, format!("No avatar found with id: {}", query_id).as_str())));
     }
 
-    let avatar = avatar_result.unwrap().into_iter().next();
+    let result_unwrapped = avatar_result.unwrap();
+    if result_unwrapped.len() == 0 {
+        return Err(RequestError::from((404, format!("No avatar found with id: {}", query_id).as_str())));
+    }
+
+    let avatar = result_unwrapped.into_iter().next();
     Ok(avatar.unwrap())
 }
 

@@ -9,5 +9,6 @@ COPY . .
 
 RUN cargo install --path .
 RUN cargo install diesel_cli
+RUN cargo build --release
 
 CMD ["docker/start-web-service.sh"]

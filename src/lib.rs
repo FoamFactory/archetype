@@ -1,5 +1,4 @@
 #![feature(decl_macro)]
-#![feature(in_band_lifetimes)]
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate serde;

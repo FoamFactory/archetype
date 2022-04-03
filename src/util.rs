@@ -21,6 +21,14 @@ pub fn get_data_uri_for_avatar(avatar: &Avatar) -> String {
     format!("data:{};base64,{}", avatar.mimetype, avatar.image)
 }
 
+pub fn extract_data_from_uri(data_uri: &str) -> (String, String) {
+    let re = Regex::new(r"data:(image/png|image/jpeg);base64,(.*)").unwrap();
+    let caps = re.captures(data_uri).unwrap();
+    let mime_type = caps.get(1).map_or("", |m| m.as_str());
+    let image_data = caps.get(2).map_or("", |m| m.as_str());
+    (String::from(mime_type), String::from(image_data))
+}
+
 pub fn is_host_allowed(host: &IpAddr) -> bool {
     let allowed_host_re_string = match env::var("ARCHETYPE_ALLOWED_HOSTS") {
         Ok(v) => v,

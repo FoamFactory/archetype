@@ -5,6 +5,11 @@ use serde::{Deserialize, Serialize};
 use crate::models::avatars::dsl::avatars as avatars_dsl;
 use crate::util::get_data_uri_for_avatar;
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AvatarUri {
+    pub data_uri: String
+}
+
 #[derive(Debug, Queryable)]
 pub struct Avatar {
     pub id: i32,

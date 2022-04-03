@@ -2,12 +2,13 @@
 
 use diesel::MysqlConnection;
 use rocket::data::Data;
+// use rocket::serde::json::Json;
 use rocket::response::content::Json;
 use rocket::{Build, catchers, Request, Rocket, routes};
 use archetype_lib::db::establish_connection;
 use archetype_lib::{delete_avatar_by_id_with_connection, get_all_avatars_with_connection, get_avatar_by_id_with_connection, get_file_as_base64_encoded_string, responders, update_avatar_by_id_with_connection};
-use archetype_lib::models::{Avatar, AvatarInfo, ResponseMessage, VersionInfo};
-use archetype_lib::util::get_version_code_from_string;
+use archetype_lib::models::{Avatar, AvatarInfo, AvatarUri, ResponseMessage, VersionInfo};
+use archetype_lib::util::{extract_data_from_uri, get_version_code_from_string};
 
 use archetype_lib::guards::AllowedHosts;
 use archetype_lib::responders::JsonRetriever;
@@ -85,8 +86,23 @@ fn get_all_avatars(_allowed_hosts: AllowedHosts) -> Result<Json<String>, respond
     Ok(Json(json_obj))
 }
 
-#[post("/avatar", data = "<upload_file>")]
-async fn upload_new_avatar(upload_file: Data<'_>, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
+#[post("/avatar/uri", format = "json", data = "<avatar_uri>")]
+async fn upload_new_avatar_from_uri(avatar_uri: rocket::serde::json::Json<AvatarUri>, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
+    let (mime_type, data) = extract_data_from_uri(&avatar_uri.data_uri);
+
+    // Connect to the database
+    let conn: MysqlConnection = establish_connection(None);
+
+    // Create a new Avatar object and put it in the database
+    let avt: Avatar = Avatar::create(&mime_type, &data, &conn);
+
+    let info = AvatarInfo::from(&avt);
+    let json_obj = serde_json::to_string(&info).unwrap();
+    Ok(Json(json_obj))
+}
+
+#[post("/avatar/file", data = "<upload_file>")]
+async fn upload_new_avatar_from_file(upload_file: Data<'_>, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
     let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file).await?;
 
     // Connect to the database
@@ -143,7 +159,8 @@ fn rocket() -> Rocket<Build> {
             version,
             delete_avatar_by_id,
             get_avatar_by_id,
-            upload_new_avatar,
+            upload_new_avatar_from_file,
+            upload_new_avatar_from_uri,
             put_avatar,
             get_all_avatars,
         ])

@@ -118,6 +118,23 @@ async fn forbidden(req: &Request<'_>) -> Json<String> {
     Json(json_string)
 }
 
+#[catch(404)]
+async fn not_found(req: &Request<'_>) -> Json<String> {
+    let def_req_error = r#"
+    {
+        "message": "Path not found"
+    }
+    "#;
+    let mut json_string = String::from(def_req_error);
+    let guard_result = req.guard::<AllowedHosts>().await;
+    if guard_result.is_failure() {
+        let status_gd_result= guard_result.failed().unwrap();
+        let req_json = status_gd_result.1.get_json();
+        json_string = String::from(&req_json.0);
+    }
+    Json(json_string)
+}
+
 // Main Function Replacement
 #[launch]
 fn rocket() -> Rocket<Build> {
@@ -130,7 +147,7 @@ fn rocket() -> Rocket<Build> {
             put_avatar,
             get_all_avatars,
         ])
-        .register("/", catchers![forbidden])
+        .register("/", catchers![forbidden, not_found])
 }
 
 // TODO_jwir3: Tests need to be rewritten to use MySQL since we can't use BOTH MySQL and Sqlite

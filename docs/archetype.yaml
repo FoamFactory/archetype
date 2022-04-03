@@ -73,6 +73,14 @@ components:
           schema:
             $ref: '#/components/schemas/UserAvatarList'
   schemas:
+    AvatarUri:
+      description: 'An object containing a data URI that contains the binary data of an image to be used as an avatar.'
+      type: object
+      properties:
+        data_uri:
+          description: 'The data URI containing the image data to use as an avatar.'
+          type: string
+          example: 'data:image/png;base64,...'
     DetailedErrorMessage:
       description: 'An object containing a more specific internal error code and a detailed message to the client about what occurred on the server.'
       type: object
@@ -119,13 +127,13 @@ components:
       items:
         $ref: '#/components/schemas/UserAvatar'
 paths:
-  /avatar:
+  /avatar/file:
     post:
       tags:
         - Avatars
-      summary: 'Create a new avatar'
+      summary: 'Create a new avatar from a file attached as the body of a request'
       description: |
-        Create a new avatar and store it in the system.
+        Create a new avatar and store it in the system from the data in the body of the request.
       requestBody:
         content:
           'image/jpeg':
@@ -136,6 +144,22 @@ paths:
             schema:
               type: string
               format: binary
+      responses:
+        '200':
+          $ref: '#/components/responses/Avatar'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+  /avatar/uri:
+    post:
+      tags:
+        - Avatars
+      summary: 'Create a new avatar from a file encoded as a data URI'
+      description: |
+        Create a new avatar and store it in the system from the data in the body of the request.
+      requestBody:
+        $ref: '#/components/schemas/AvatarUri'
       responses:
         '200':
           $ref: '#/components/responses/Avatar'

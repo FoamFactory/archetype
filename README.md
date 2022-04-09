@@ -13,11 +13,16 @@ git clone git@github.com:FoamFactory/archetype
 ```
 
 # Setup
+## From Source
 Archetype is run via a [docker](https://www.docker.com/) container. As such, you're going to need docker engine and `docker-compose` installed. Installation instructions:
   - [Docker engine](https://docs.docker.com/engine/install/)
   - [docker-compose](https://docs.docker.com/compose/install/)
 
-Once you have docker installed, you will need to edit `docker-compose.yml` to include the host(s) which you wish to allow access to the avatar service _from_. This is a comma-separated list of IP addresses. If you only want access to be available from the docker host machine, you can likely use the default. If this doesn't work (you get errors saying that your host is not in the allowed list), you may need to run the following command on your docker host to determine its in-network IP:
+Once you have docker installed, you will need to download this repository, edit `docker-compose.yml` to include the
+host(s) which you wish to allow access to the avatar service _from_. This is a comma-separated list of IP addresses.
+If you only want access to be available from the docker host machine, you can likely use the default. If this doesn't
+work (you get errors saying that your host is not in the allowed list), you may need to run the following command on
+your docker host to determine its in-network IP:
 ```bash
 # Get the docker network up and running
 docker-compose up -d
@@ -32,6 +37,78 @@ docker-compose down
 Then, to get the service running, simply run:
 ```bash
 docker-compose up -d
+```
+
+## From Docker Hub
+You can also create your own `docker-compose.yml` file and have it download the appropriate images from Docker Hub. You
+will likely want to create a `.env` file first, and populate the following values:
+```bash
+# This is the "mode" of operation, and is appended to the MySQL database name. It can be anything you choose, but
+# likely something like "production", "staging", or "development".
+ARCHETYPE_MODE=production
+
+# The prefix of the name of the database. This is used with `ARCHETYPE_MODE` to create the database name. For example,
+# if `ARCHTYPE_MODE=production` and `MYSQL_DATABASE=archetype`, then the final database name will be
+# `archtype_production`.
+MYSQL_DATABASE=archetype
+
+# The name of the user on the MySQL host for accessing the database. This will be created automatically on the
+# first run, so it doesn't need to already exist.
+MYSQL_USER=archetype
+
+# The password for the user on the MySQL host for accessing the database. This will be created automatically on the
+# first run, so it doesn't need to already exist.
+MYSQL_PASSWORD=somepassword
+
+# The root password you want for the MySQL host. This does not need to already be set.
+MYSQL_ROOT_PASSWORD=root
+```
+
+Once this is complete, write your `docker-compose.yml` file. A typical `docker-compose.yml` file looks something like:
+
+```yaml
+version: "3.9"
+services:
+  db:
+    image: "mysql:5.7"
+    container_name: archetype_db
+    restart: unless-stopped
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - archetype_net
+    env_file:
+      - .env.sample
+    ports:
+      # Use port 3307 on the host machine so as not to interfere with another mysql server already running
+      # You can safely disable this if you don't want to access the MySQL container outside of archetype
+      - "3307:3306"
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --password=$$MYSQL_PASSWORD
+
+  web_service:
+    image: "jwir3/archetype_web:latest"
+    env_file:
+      - .env.sample
+    environment:
+      - ARCHETYPE_MODE
+      - ARCHETYPE_ALLOWED_HOSTS=172\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+      - MYSQL_DATABASE="${MYSQL_DATABASE}_${ARCHETYPE_MODE}"
+      - DB_URL="mysql://$MYSQL_USER:$MYSQL_PASSWORD@db/$MYSQL_DATABASE"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - archetype_net
+networks:
+  archetype_net:
+    driver: bridge
+volumes:
+  db_data:
 ```
 
 # Installation and Maintenance Service

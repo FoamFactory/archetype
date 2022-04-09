@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if diesel migration pending > /dev/null 2>&1; then
-    archetype
+    RUST_BACKTRACE=1 archetype
 else
-    diesel migration run && archetype
+    diesel migration run && RUST_BACKTRACE=1 archetype
 fi

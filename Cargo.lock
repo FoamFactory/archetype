@@ -22,7 +22,7 @@ dependencies = [
 
 [[package]]
 name = "archetype"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "base64",
  "chrono",

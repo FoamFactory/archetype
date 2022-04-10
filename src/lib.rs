@@ -1,4 +1,4 @@
-#![feature(decl_macro)]
+#![feature(decl_macro, const_fn_trait_bound)]
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate serde;

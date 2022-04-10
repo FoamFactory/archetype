@@ -9,7 +9,7 @@ services:
     networks:
       - archetype_net
     env_file:
-      - .env
+      - .env.test
     ports:
       # Use port 3307 on the host machine so as not to interfere with another mysql server already running
       - "3307:3306"

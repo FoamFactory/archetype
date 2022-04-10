@@ -6,6 +6,7 @@ WORKDIR /usr/src/archetype
 
 COPY . .
 
+RUN cargo --version
 RUN cargo install --path .
 RUN cargo install diesel_cli
 #RUN cargo build --release

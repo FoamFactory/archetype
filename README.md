@@ -4,7 +4,18 @@
 An easy solution for avatar services.
 
 # API
-You can view the API for Archtype [here](https://app.swaggerhub.com/apis-docs/FoamFactory/Archetype/1.0.0)
+You can view the API for Archetype [here](https://app.swaggerhub.com/apis-docs/FoamFactory/Archetype/1.0.0)
+
+# Installation and Maintenance Service
+The installation instructions below aren't complicated, but we make it even easier for you by providing a service to
+install and maintain an Archetype instance for a really low cost.
+
+The following services are offered through FoamFactory:
+- Install on one of our shared hosts, with maintenance: **$3/month** (billed annually)
+- Install on a linode instance, **$150** (one-time), plus [linode fees](https://www.linode.com/pricing/)
+
+If you're interested in having us perform the setup for you, please fill out the following
+[query form](https://forms.gle/FfJtdic2dz2md5bu8), and we'll respond as soon as possible.
 
 # Installation
 The easiest way to install archetype is from source through github:
@@ -111,13 +122,6 @@ volumes:
   db_data:
 ```
 
-# Installation and Maintenance Service
-FoamFactory offers the following installation and maintenance services for archetype, so you don't even have to do the above:
-- Install on one of our shared hosts, with maintenance: **$3/month** (billed annually)
-- Install on a linode instance, **$150** (one-time), plus [linode fees](https://www.linode.com/pricing/)
-
-If you're interested in having us perform the setup for you, please fill out the following [query form](https://forms.gle/FfJtdic2dz2md5bu8) and we'll respond as soon as possible.
-
 # Building
 If you want to build from source, you can clone this project from Github and follow these steps to build. You will need
 docker installed and working (see above) to run the MySQL database. You will additionally need a Rust toolchain installed,
@@ -135,27 +139,4 @@ export DATABASE_URL=mysql://archetype:<password>@0.0.0.0:3307/archetype_producti
 3. Use `cargo` to build and run:
 ```bash
 cargo run
-```
-
-# Docker Image Maintenance
-This is a note for maintainers of the docker image [jwir3/archetype_web](https://hub.docker.com/r/jwir3/archetype_web/tags).
-You probably don't need to worry about this.
-
-In order to build the docker image, we need to set up a "dummy" `.env` file with some basic environment variables in it.
-These can be overridden by the user when the download/run the image, but the build will fail without _something_ there.
-
-**Note**: We should fix this so that it doesn't just _terminate the build_ if a `.env` file is not found.
-
-Once you've made code changes that constitute the update(s) you want to make to the image in question, simply run the
-command:
-```
-docker-compose -f docker-compose.yml --env-file <dummy_env_file or test env_file> up
-```
-
-Next, verify that the service is working as you expect (unless you built with a dummy `.env` file, in which case you
-likely will not be able to check).
-
-Next, tag the image for docker:
-```
-
 ```

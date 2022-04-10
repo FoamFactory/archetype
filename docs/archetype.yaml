@@ -3,11 +3,10 @@ info:
   title: Archetype
   description: A User Avatar service, designed for FoamFactory, usable for anything
   version: 1.0.0
-  "contact": {
-    "name": "Scott Johnson",
-    "url": "http://www.foamfactory.io",
-    "email": "scott@foamfactory.io"
-  },
+  contact:
+    name: "Scott Johnson"
+    url: "https://github.com/FoamFactory/archetype"
+    email: "scott@foamfactory.io"
 tags:
   - name: Avatars
     description: |
@@ -66,12 +65,12 @@ components:
               - properties:
                   error:
                     example: 'A record of type Avatar having id 111 was not found'
-    UserAvatarList:
-      description: 'Response containing an array of `UserAvatar` objects'
+    DehydratedUserAvatarList:
+      description: 'Response containing an array of `DehydratedUserAvatar` objects'
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/UserAvatarList'
+            $ref: '#/components/schemas/DehydratedAvatarList'
   schemas:
     AvatarUri:
       description: 'An object containing a data URI that contains the binary data of an image to be used as an avatar.'
@@ -81,6 +80,20 @@ components:
           description: 'The data URI containing the image data to use as an avatar.'
           type: string
           example: 'data:image/png;base64,...'
+    DehydratedUserAvatar:
+      description: |
+        An object containing the data relevant for a user's avatar, minus the actual avatar itself.
+      type: object
+      properties:
+        id:
+          type: number
+          description: 'The database ID of the record. Guaranteed to be unique over all `UserAvatar` objects.'
+          example: 1234
+        mimetype:
+          type: string
+          example: "image/jpeg"
+          description: |
+            The MIME type of the image data. Must be one of 'image/jpeg' or 'image/png'.
     DetailedErrorMessage:
       description: 'An object containing a more specific internal error code and a detailed message to the client about what occurred on the server.'
       type: object
@@ -120,12 +133,12 @@ components:
           description: 'A convenience interpretation of a data URI for browsers so that the image can be directly displayed.'
           example: |
             data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAABj2lDQ1BJQ0MgcHJvZmlsZQAAKJF9kb1Lw1AUxU9TxSotIjqIdMhQHcSCKIiDi1UsQoVSK1h1MHnph5CkIUlxcRRcCw6ii1+D/gGiq4OrIAiKIOLkH+DXIiXelwRapPXB4/5ycu/hvfMA4VxlmtU2Cmi6bWaSCXE5tyJ2vEFABD0Io1NiljGdTqfQcn0/IMDrfZx7te5ruiJK3mJAQCSeY4ZpE5eIJzZtg/MRcR8rSQrxBfGISQckfuW67PEn56LLQoizmc3MEEeJxWIDyw3MSqZGPEUcUzSd/IV1jxXO25w1tcL8c/IbhvP60iLVYdpRJKFiAxoMWMhDhIwKfauwEaeqk2IhQ10Jyra5z4Drk6Y52fViNDOLMnlKrgP4W/zN2CqMj3lOYXJuf3Gcj0GgYxeoVR3n59hxaidA8Bm41uvzZcpx8ov0al2LHQLddM/Lm7om7wFXO0D/kyGZkisFaQuFAvB+Rs+VA3rvgK5VLz//P04fgewWkLoF9g+AoSJ5r7W4d8jPbx4LSP/b4yf4C4vSdIzDS13OAAAACXBIWXMAAC4jAAAuIwF4pT92AAAAB3RJTUUH5gINEQwu6eRSBgAAABx0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR2xpbXBzZe5OGAcAAAAUSURBVBjTY/x/jgEPYGJgGJXGBAA5EwHhXz/1YwAAAABJRU5ErkJggg==
-    UserAvatarList:
+    DehydratedAvatarList:
       description: |
-        An array of `UserAvatar` objects
+        An array of `DehydratedUserAvatar` objects
       type: array
       items:
-        $ref: '#/components/schemas/UserAvatar'
+        $ref: '#/components/schemas/DehydratedUserAvatar'
 paths:
   /avatar/file:
     post:
@@ -159,7 +172,10 @@ paths:
       description: |
         Create a new avatar and store it in the system from the data in the body of the request.
       requestBody:
-        $ref: '#/components/schemas/AvatarUri'
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvatarUri'
       responses:
         '200':
           $ref: '#/components/responses/Avatar'
@@ -241,8 +257,8 @@ paths:
         - Avatars
       summary: 'List all avatars in the system'
       description: |
-        Retrieves a listing of all user avatar objects in the system.
+        Retrieves a listing of all user avatar objects in the system, without the actual image data associated.
       responses:
         '200':
-          $ref: '#/components/responses/UserAvatarList'
+          $ref: '#/components/responses/DehydratedUserAvatarList'
 

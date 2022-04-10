@@ -41,6 +41,23 @@ impl Avatar {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct DehydratedAvatarInfo {
+    pub id: i32,
+    pub mimetype: String,
+    pub created: String
+}
+
+impl From<&Avatar> for DehydratedAvatarInfo {
+    fn from(avatar: &Avatar) -> Self {
+        DehydratedAvatarInfo {
+            id: avatar.id,
+            mimetype: String::from(&avatar.mimetype),
+            created: avatar.created.format("%Y-%m-%d %H:%M:%S.%f").to_string()
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct AvatarInfo {
     pub id: i32,
     pub mimetype: String,

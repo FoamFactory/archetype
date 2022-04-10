@@ -7,7 +7,7 @@ use rocket::response::content::Json;
 use rocket::{Build, catchers, Request, Rocket, routes};
 use archetype_lib::db::establish_connection;
 use archetype_lib::{delete_avatar_by_id_with_connection, get_all_avatars_with_connection, get_avatar_by_id_with_connection, get_file_as_base64_encoded_string, responders, update_avatar_by_id_with_connection};
-use archetype_lib::models::{Avatar, AvatarInfo, AvatarUri, ResponseMessage, VersionInfo};
+use archetype_lib::models::{Avatar, AvatarInfo, AvatarUri, DehydratedAvatarInfo, ResponseMessage, VersionInfo};
 use archetype_lib::util::{extract_data_from_uri, get_version_code_from_string};
 
 use archetype_lib::guards::AllowedHosts;
@@ -69,9 +69,6 @@ async fn put_avatar(query_id: i32, upload_file: Data<'_>, _allowed_hosts: Allowe
     Ok(Json(json_obj))
 }
 
-// TODO_jwir3: So.. this could result in a LOT of data being sent over the wire. Perhaps we should
-//             only return the ids of the avatars, along with the metadata? Or, at the very least,
-//             page the data...
 #[get("/avatars")]
 fn get_all_avatars(_allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError> {
     // Connect to the database
@@ -79,8 +76,8 @@ fn get_all_avatars(_allowed_hosts: AllowedHosts) -> Result<Json<String>, respond
 
     let avts: Vec<Avatar> = get_all_avatars_with_connection(&conn)?;
 
-    let av_infos: Vec<AvatarInfo> = avts.into_iter()
-        .map(|av| AvatarInfo::from(&av))
+    let av_infos: Vec<DehydratedAvatarInfo> = avts.into_iter()
+        .map(|av| DehydratedAvatarInfo::from(&av))
         .collect();
     let json_obj = serde_json::to_string(&av_infos).unwrap();
     Ok(Json(json_obj))

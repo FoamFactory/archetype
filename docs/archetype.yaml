@@ -31,9 +31,15 @@ components:
               - properties:
                   error:
                     example: 'File Corrupted'
-    UnsupportedMediaType:
+    DehydratedUserAvatarList:
+      description: 'Response containing an array of `DehydratedUserAvatar` objects'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DehydratedAvatarList'
+    NotFoundError:
       description: |
-        Returned if an image is sent with a mime type other than `image/jpeg` or `image/png`.
+        The record with the requested `id` was not found in the system.
       content:
         application/json:
           schema:
@@ -41,7 +47,19 @@ components:
               - $ref: '#/components/schemas/DetailedErrorMessage'
               - properties:
                   error:
-                    example: 'Image data sent is not in PNG or JPG format'
+                    example: 'A record of type Avatar having id 111 was not found'
+    PayloadTooLarge:
+      description: |
+        An error that is thrown when avatar images exceed the size allocated (2MB by default).
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Message'
+              - properties:
+                  message:
+                    example:
+                      'File must be less than 2MB in size'
     Success:
       description: |
         A message indicating that the operation succeeded.
@@ -54,9 +72,9 @@ components:
                   message:
                     example:
                       'Successfully deleted Avatar with id 3'
-    NotFoundError:
+    UnsupportedMediaType:
       description: |
-        The record with the requested `id` was not found in the system.
+        Returned if an image is sent with a mime type other than `image/jpeg` or `image/png`.
       content:
         application/json:
           schema:
@@ -64,13 +82,7 @@ components:
               - $ref: '#/components/schemas/DetailedErrorMessage'
               - properties:
                   error:
-                    example: 'A record of type Avatar having id 111 was not found'
-    DehydratedUserAvatarList:
-      description: 'Response containing an array of `DehydratedUserAvatar` objects'
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/DehydratedAvatarList'
+                    example: 'Image data sent is not in PNG or JPG format'
   schemas:
     AvatarUri:
       description: 'An object containing a data URI that contains the binary data of an image to be used as an avatar.'
@@ -162,6 +174,8 @@ paths:
           $ref: '#/components/responses/Avatar'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
   /avatar/uri:
@@ -181,12 +195,41 @@ paths:
           $ref: '#/components/responses/Avatar'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
-
-  /avatar/{id}:
+  /avatar/uri/{id}:
     put:
-      summary: Partially update a user's avatar by identifier
+      summary: Partially update a user's avatar by identifier with a data uri in the body
+      tags:
+        - Avatars
+      parameters:
+        - name: id
+          in: path
+          description: |
+            Database `id` of the `Avatar` to update
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvatarUri'
+      responses:
+        '200':
+          $ref: '#/components/responses/Avatar'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+  /avatar/file/{id}:
+    put:
+      summary: Partially update a user's avatar by identifier with a file as a body
       tags:
         - Avatars
       parameters:
@@ -213,6 +256,8 @@ paths:
           $ref: '#/components/responses/Avatar'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
     delete:

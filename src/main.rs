@@ -1,16 +1,17 @@
 #[macro_use] extern crate rocket;
 
 use diesel::MysqlConnection;
-use rocket::data::Data;
+use rocket::data::{Data};
 // use rocket::serde::json::Json;
 use rocket::response::content::Json;
+use rocket::data::{Limits, ToByteUnit};
 use rocket::{Build, catchers, Request, Rocket, routes};
 use archetype_lib::db::establish_connection;
 use archetype_lib::{delete_avatar_by_id_with_connection, get_all_avatars_with_connection, get_avatar_by_id_with_connection, get_file_as_base64_encoded_string, responders, update_avatar_by_id_with_connection};
 use archetype_lib::models::{Avatar, AvatarInfo, AvatarUri, DehydratedAvatarInfo, ResponseMessage, VersionInfo};
 use archetype_lib::util::{extract_data_from_uri, get_version_code_from_string};
 
-use archetype_lib::guards::AllowedHosts;
+use archetype_lib::guards::{AllowedHosts, FileSizeChecker};
 use archetype_lib::responders::JsonRetriever;
 
 // Endpoint Definitions
@@ -53,9 +54,11 @@ fn get_avatar_by_id(query_id: i32, _allowed_hosts: AllowedHosts) -> Result<Json<
     Ok(Json(json_obj))
 }
 
-#[put("/avatar/<query_id>", data = "<upload_file>")]
-async fn put_avatar(query_id: i32, upload_file: Data<'_>, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError> {
-    let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file).await?;
+#[put("/avatar/file/<query_id>", data = "<upload_file>")]
+async fn put_avatar(query_id: i32, upload_file: Data<'_>, _allowed_hosts: AllowedHosts, _file_size_guard: FileSizeChecker, limits: &Limits) -> Result<Json<String>, responders::RequestError> {
+    let limit = limits.get("upload_file").unwrap_or(2.mebibytes());
+
+    let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file, limit).await?;
 
     // Connect to the database
     let conn: MysqlConnection = establish_connection(None);
@@ -84,7 +87,7 @@ fn get_all_avatars(_allowed_hosts: AllowedHosts) -> Result<Json<String>, respond
 }
 
 #[post("/avatar/uri", format = "json", data = "<avatar_uri>")]
-async fn upload_new_avatar_from_uri(avatar_uri: rocket::serde::json::Json<AvatarUri>, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
+async fn upload_new_avatar_from_uri(avatar_uri: rocket::serde::json::Json<AvatarUri>, _file_size_guard: FileSizeChecker, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
     let (mime_type, data) = extract_data_from_uri(&avatar_uri.data_uri);
 
     // Connect to the database
@@ -99,8 +102,10 @@ async fn upload_new_avatar_from_uri(avatar_uri: rocket::serde::json::Json<Avatar
 }
 
 #[post("/avatar/file", data = "<upload_file>")]
-async fn upload_new_avatar_from_file(upload_file: Data<'_>, _allowed_hosts: AllowedHosts) -> Result<Json<String>, responders::RequestError>  {
-    let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file).await?;
+async fn upload_new_avatar_from_file(upload_file: Data<'_>, _allowed_hosts: AllowedHosts, _file_size_guard: FileSizeChecker, limits: &Limits) -> Result<Json<String>, responders::RequestError>  {
+
+    let limit = limits.get("upload_file").unwrap_or(2.mebibytes());
+    let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file, limit).await?;
 
     // Connect to the database
     let conn: MysqlConnection = establish_connection(None);
@@ -119,6 +124,23 @@ async fn forbidden(req: &Request<'_>) -> Json<String> {
     let def_req_error = r#"
     {
         message: "Access Denied"
+    }
+    "#;
+    let mut json_string = String::from(def_req_error);
+    let guard_result = req.guard::<AllowedHosts>().await;
+    if guard_result.is_failure() {
+        let status_gd_result= guard_result.failed().unwrap();
+        let req_json = status_gd_result.1.get_json();
+        json_string = String::from(&req_json.0);
+    }
+    Json(json_string)
+}
+
+#[catch(413)]
+async fn payload_too_large(req: &Request<'_>) -> Json<String> {
+    let def_req_error = r#"
+    {
+        "message": "File must be less than 2MB in size"
     }
     "#;
     let mut json_string = String::from(def_req_error);
@@ -151,6 +173,12 @@ async fn not_found(req: &Request<'_>) -> Json<String> {
 // Main Function Replacement
 #[launch]
 fn rocket() -> Rocket<Build> {
+    // Set a limit of 2MB for file uploads and JSON.
+    let _limits = Limits::default()
+        .limit("file/png", 2.mebibytes())
+        .limit("file/jpg", 2.mebibytes())
+        .limit("json", 2.mebibytes());
+
     rocket::build()
         .mount("/", routes![
             version,
@@ -161,11 +189,11 @@ fn rocket() -> Rocket<Build> {
             put_avatar,
             get_all_avatars,
         ])
-        .register("/", catchers![forbidden, not_found])
+        .register("/", catchers![forbidden, not_found, payload_too_large])
 }
 
-// TODO_jwir3: Tests need to be rewritten to use MySQL since we can't use BOTH MySQL and Sqlite
-//             connections and change only at runtime.
+// To run the test suite, you first need to start the MySQL server with Docker. This can be
+// accomplished by running the `./scripts/setup-test-env.sh` script (if on Linux).
 
 // #[cfg(test)]
 // mod tests {

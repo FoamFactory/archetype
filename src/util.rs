@@ -18,7 +18,9 @@ pub fn get_version_code_from_string(version_string: &str) -> u32 {
 }
 
 pub fn get_data_uri_for_avatar(avatar: &Avatar) -> String {
-    format!("data:{};base64,{}", avatar.mimetype, avatar.image)
+    let image_bytes: Vec<u8> = avatar.image.clone();
+    let encoded_string = base64::encode(image_bytes);
+    format!("data:{};base64,{}", avatar.mimetype, encoded_string)
 }
 
 pub fn extract_data_from_uri(data_uri: &str) -> (String, String) {

@@ -14,7 +14,7 @@ pub struct AvatarUri {
 pub struct Avatar {
     pub id: i32,
     pub mimetype: String,
-    pub image: String,
+    pub image: Vec<u8>,
     pub created: chrono::NaiveDateTime,
 }
 
@@ -22,8 +22,10 @@ impl Avatar {
     pub fn create(with_mimetype: &str, with_image: &str, conn: &MysqlConnection) -> Avatar {
         use crate::schema::avatars::dsl::*;
 
+        let bytes = base64::decode(with_image).unwrap();
+
         let _inserted_count = insert_into(avatars_dsl)
-            .values((mimetype.eq(String::from(with_mimetype)), image.eq(String::from(with_image))))
+            .values((mimetype.eq(String::from(with_mimetype)), image.eq(bytes)))
             .execute(conn)
             .expect("Error saving new Avatar record");
 
@@ -68,10 +70,12 @@ pub struct AvatarInfo {
 
 impl From<&Avatar> for AvatarInfo {
     fn from(avatar: &Avatar) -> Self {
+        let image_bytes: Vec<u8> = avatar.image.clone();
+        let encoded_image = base64::encode(image_bytes);
         AvatarInfo {
             id: avatar.id,
             mimetype: String::from(&avatar.mimetype),
-            image: String::from(&avatar.image),
+            image: encoded_image,
             created: avatar.created.format("%Y-%m-%d %H:%M:%S.%f").to_string(),
             data_uri: get_data_uri_for_avatar(&avatar)
         }

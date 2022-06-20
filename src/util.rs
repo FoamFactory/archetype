@@ -56,7 +56,7 @@ pub fn is_host_allowed(host: &IpAddr) -> bool {
 mod tests {
     use std::env;
     use std::net::{IpAddr, Ipv4Addr};
-    use crate::util::{get_allowed_hosts_from_environment, is_host_allowed};
+    use crate::util::{is_host_allowed};
 
     #[test]
     fn it_should_show_that_no_hosts_are_allowed() {

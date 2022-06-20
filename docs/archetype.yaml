@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Archetype
   description: A User Avatar service, designed for FoamFactory, usable for anything
-  version: 1.0.0
+  version: 1.0.6
   contact:
     name: "Scott Johnson"
     url: "https://github.com/FoamFactory/archetype"

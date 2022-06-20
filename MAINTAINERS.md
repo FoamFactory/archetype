@@ -7,10 +7,15 @@ These can be overridden by the user when the download/run the image, but the bui
 
 **Note**: We should fix this so that it doesn't just _terminate the build_ if a `.env` file is not found.
 
-Once you've made code changes that constitute the update(s) you want to make to the image in question, simply run the
-build command:
+Once you've made code changes that constitute the update(s) you want to make to the image in question, make sure that
+a git tag is in place and that you're building off of that tag:
 ```
-docker-compose -f docker-compose.yml --env-file <dummy_env_file or test env_file> build web-service
+git checkout <tag_name>
+```
+
+Next,
+```
+docker-compose -f docker-compose.yml --env-file <dummy_env_file or test env_file> build web_service
 ```
 
 Next, verify that the service is working as you expect (unless you built with a dummy `.env` file, in which case you

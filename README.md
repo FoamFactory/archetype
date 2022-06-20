@@ -4,7 +4,7 @@
 An easy solution for avatar services.
 
 ## Features
-  - **Fast**: We're built on Rust with a MySQL backend, so we're as fast as possible when handling requests.
+  - **Fast**: We're built on Rust with a MySQL backend, so archetype is faster than light (ok, no, not really faster than light...nothing can be [faster than light](https://en.wikipedia.org/wiki/Special_relativity))
   - **Safe**: Again, being built on Rust, we're type- and memory-safe.
   - **Straightforward API**: The API to communicate with Archetype is easy to understand and use for anyone that's familiar with REST.
   - **Lightweight**: Archetype is easy to set up and can be forgotten about once setup. Just run our Docker containers on your server, and start using avatars.

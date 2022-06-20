@@ -1,26 +1,26 @@
-use rocket::response::content::Json;
+use rocket::response::content::RawJson;
 
 pub trait JsonRetriever {
-  fn get_json(&self) -> &Json<String>;
+  fn get_json(&self) -> &RawJson<String>;
 }
 
 #[derive(Debug, Responder)]
 pub enum RequestError {
     #[response(status = 400, content_type = "json")]
-    BadRequest(Json<String>),
+    BadRequest(RawJson<String>),
 
     #[response(status = 403, content_type = "json")]
-    Forbidden(Json<String>),
+    Forbidden(RawJson<String>),
 
     #[response(status = 404, content_type = "json")]
-    NotFound(Json<String>),
+    NotFound(RawJson<String>),
 
     #[response(status = 415, content_type = "json")]
-    UnsupportedMediaType(Json<String>),
+    UnsupportedMediaType(RawJson<String>),
 }
 
 impl JsonRetriever for RequestError {
-    fn get_json(&self) -> &Json<String> {
+    fn get_json(&self) -> &RawJson<String> {
         match self {
             RequestError::NotFound(j) => j,
             RequestError::BadRequest(j) => j,
@@ -39,10 +39,10 @@ impl From<(u16, &str)> for RequestError {
 
         let json_obj = serde_json::to_string(&req_err_msg).unwrap();
         match code {
-            403 => RequestError::Forbidden(Json(json_obj)),
-            404 => RequestError::NotFound(Json(json_obj)),
-            415 => RequestError::UnsupportedMediaType(Json(json_obj)),
-            _ => RequestError::BadRequest(Json(json_obj))
+            403 => RequestError::Forbidden(RawJson(json_obj)),
+            404 => RequestError::NotFound(RawJson(json_obj)),
+            415 => RequestError::UnsupportedMediaType(RawJson(json_obj)),
+            _ => RequestError::BadRequest(RawJson(json_obj))
         }
     }
 }

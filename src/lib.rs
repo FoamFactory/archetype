@@ -8,7 +8,7 @@ use std::io::Write;
 use diesel::{ExpressionMethods, MysqlConnection, QueryDsl, RunQueryDsl};
 use infer::Type;
 use rocket::Data;
-use rocket::data::ToByteUnit;
+use rocket::data::{ByteUnit};
 use crate::models::Avatar;
 use crate::responders::RequestError;
 
@@ -20,10 +20,11 @@ pub mod responders;
 pub mod guards;
 
 // Endpoint Utility Functions
-pub async fn get_file_as_base64_encoded_string(file: Data<'_>) -> Result<(String, Type), RequestError> {
+pub async fn get_file_as_base64_encoded_string(file: Data<'_>, limit: ByteUnit) -> Result<(String, Type), RequestError> {
     let mut buffer: Vec<u8> = vec![];
-    let written = file.open(512.kibibytes())
+    let written = file.open(limit)
         .stream_to(&mut buffer).await;
+
     if written.is_err() {
         return Err(responders::RequestError::from((400, "File Corrupted")));
     }
@@ -106,8 +107,9 @@ pub fn get_all_avatars_with_connection(conn: &MysqlConnection) -> Result<Vec<Ava
 pub fn update_avatar_by_id_with_connection(conn: &MysqlConnection, query_id: i32, with_image: String, with_mime_type: String) -> Result<Avatar, RequestError> {
     use crate::schema::avatars::dsl::*;
 
+    let binary_image: Vec<u8> = base64::decode(with_image).unwrap();
     let update_result = diesel::update(avatars.filter(id.eq(query_id)))
-        .set((image.eq(with_image), mimetype.eq(with_mime_type)))
+        .set((image.eq(binary_image), mimetype.eq(with_mime_type)))
         .execute(conn);
 
     if update_result.is_err() {

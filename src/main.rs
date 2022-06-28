@@ -54,7 +54,7 @@ fn get_avatar_by_id(query_id: i32, _allowed_hosts: AllowedHosts) -> Result<RawJs
 }
 
 #[put("/avatar/file/<query_id>", data = "<upload_file>")]
-async fn put_avatar(query_id: i32, upload_file: Data<'_>, _allowed_hosts: AllowedHosts, _file_size_guard: FileSizeChecker, limits: &Limits) -> Result<RawJson<String>, responders::RequestError> {
+async fn put_avatar_from_file(query_id: i32, upload_file: Data<'_>, _allowed_hosts: AllowedHosts, _file_size_guard: FileSizeChecker, limits: &Limits) -> Result<RawJson<String>, responders::RequestError> {
     let limit = limits.get("upload_file").unwrap_or(2.mebibytes());
 
     let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file, limit).await?;
@@ -71,6 +71,24 @@ async fn put_avatar(query_id: i32, upload_file: Data<'_>, _allowed_hosts: Allowe
     Ok(RawJson(json_obj))
 }
 
+#[put("/avatar/uri/<query_id>", format = "json", data = "<avatar_uri>")]
+async fn put_avatar_from_uri(query_id: i32, avatar_uri: rocket::serde::json::Json<AvatarUri>, _allowed_hosts: AllowedHosts, _file_size_guard: FileSizeChecker, limits: &Limits) -> Result<RawJson<String>, responders::RequestError> {
+    // let limit = limits.get("upload_file").unwrap_or(2.mebibytes());
+    let (mime_type, data) = extract_data_from_uri(&avatar_uri.data_uri);
+
+    // let (b64_string, kind) = get_file_as_base64_encoded_string(upload_file, limit).await?;
+
+    // Connect to the database
+    let conn: MysqlConnection = establish_connection(None);
+
+    let avt: Avatar = update_avatar_by_id_with_connection(&conn,
+                                                          query_id,
+                                                          data,
+                                                          mime_type)?;
+    let info = AvatarInfo::from(&avt);
+    let json_obj = serde_json::to_string(&info).unwrap();
+    Ok(RawJson(json_obj))
+}
 #[get("/avatars")]
 fn get_all_avatars(_allowed_hosts: AllowedHosts) -> Result<RawJson<String>, responders::RequestError> {
     // Connect to the database
@@ -185,7 +203,8 @@ async fn main() {
             get_avatar_by_id,
             upload_new_avatar_from_file,
             upload_new_avatar_from_uri,
-            put_avatar,
+            put_avatar_from_file,
+            put_avatar_from_uri,
             get_all_avatars,
         ])
         .register("/", catchers![forbidden, not_found, payload_too_large])

@@ -1,0 +1,13 @@
+{
+  "name": "archetype",
+  "version": "1.0.6",
+  "description": "A simple avatar service for everyone.",
+  "main": "index.js",
+  "repository": "git@github.com:FoamFactory/archetype",
+  "author": "Scott Johnson <jaywir3@gmail.com>",
+  "license": "MPL-2.0",
+  "private": false,
+  "scripts": {
+    "generate:changelog": "gitmoji-changelog --output=docs/CHANGELOG.md"
+  }
+}

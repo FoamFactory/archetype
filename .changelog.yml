@@ -1,0 +1,13 @@
+conventions:
+  categories:
+    - {tag: ":zap", title: "Performance Improvements"}
+    - {tag: ":lock", title: "Security Updates"}
+    - {tag: "break", title: "Breaking Changes"}
+    - {tag: ":sparkles", title: "Features"}
+    - {tag: ":bug", title: "Bug Fixes"}
+    - {tag: "", title: "Notes"}
+    - {tag: ":fire", title: "Removal"}
+  scopes:
+    - {tag: "", title: ""}
+    - {tag: "api", title: "API"}
+    - {tag: ":book", title: "Documentation"}

@@ -32,3 +32,11 @@ Finally, push the image to docker hub:
 docker image push jwir3/archetype_web:X.Y.Z
 docker image push jwir3/archetype_web:latest
 ```
+# Docker Image Update on Shared Host
+To update the docker image that's being used on the archetype shared host, login to the host as you normally would. Then,
+run the following:
+```
+docker-compose pull
+docker-compose down
+docker-compose up -d
+```

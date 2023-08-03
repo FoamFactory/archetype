@@ -1,4 +1,4 @@
-# 0.7.0 (2023-08-03)
+# 1.0.7 (2023-08-03)
 
 - :sparkles: Dynamically build the `DATABASE_URL` from environment variables, rather than expecting it to be
   specified as its own environment variable.

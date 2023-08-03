@@ -60,25 +60,34 @@ docker-compose up -d
 You can also create your own `docker-compose.yml` file and have it download the appropriate images from Docker Hub. You
 will likely want to create a `.env` file first, and populate the following values:
 ```bash
-# This is the "mode" of operation, and is appended to the MySQL database name. It can be anything you choose, but
-# likely something like "production", "staging", or "development".
+# You can use anything you want here, but we recommend staging or production
 ARCHETYPE_MODE=production
 
-# The prefix of the name of the database. This is used with `ARCHETYPE_MODE` to create the database name. For example,
-# if `ARCHTYPE_MODE=production` and `MYSQL_DATABASE=archetype`, then the final database name will be
-# `archtype_production`.
-MYSQL_DATABASE=archetype
+# You can put any regex here to allow from whatever IP addresses you desire. This
+# is currently setup for allowing from localhost only.
+ARCHETYPE_ALLOWED_HOSTS=127.0.0.1
 
-# The name of the user on the MySQL host for accessing the database. This will be created automatically on the
-# first run, so it doesn't need to already exist.
+# The name of the database you want to use. Again, you can name it anything, but we recommend just leaving this
+# alone.
+MYSQL_DATABASE="archetype_${ARCHETYPE_MODE}"
+
+# The name of the user that will be accessing the database on a regular basis.
 MYSQL_USER=archetype
 
-# The password for the user on the MySQL host for accessing the database. This will be created automatically on the
-# first run, so it doesn't need to already exist.
+# The password for the user that will be accessing the database on a regular basis.
 MYSQL_PASSWORD=somepassword
 
-# The root password you want for the MySQL host. This does not need to already be set.
-MYSQL_ROOT_PASSWORD=root
+# The root password you want to set for the MySQL database instance.
+MYSQL_ROOT_PASSWORD=someotherpassword
+
+# The name of the host for the mysql database. Typically, this can be left as 'db' if using
+# docker-compose. If the database is on a separate host, then you'll want to make this
+# the host of the actual database in question.
+MYSQL_HOST="db"
+
+# The port on which the mysql server is running. Typically, this can be left as '3306' if
+# using docker-compose (or the standard mysql setup).
+MYSQL_PORT="3306"
 ```
 
 Once this is complete, write your `docker-compose.yml` file. A typical `docker-compose.yml` file looks something like:
@@ -134,15 +143,27 @@ docker installed and working (see above) to run the MySQL database. You will add
 typically using `rustup`: [Installing Rust](https://www.rust-lang.org/tools/install). As of this writing, the minimum
 `rustc` version required is `1.60.0-nightly`.
 
-1.Start the MySQL database using docker (you may want to change the defaults in `.env`):
+## Linux
+1. Point the `docker-compose.yml` file to the linux variant: `ln -s docker-compose.linux.yml docker-compose.yml`
+2. Copy the `.env.sample` file to `.env.test`: `cp .env.sample .env.test`.
+3. Start the MySQL database using docker (you may want to change the defaults in `.env.test`):
 ```bash
 docker-compose up db
 ```
-2. Specify your database connection url:
-```bash
-export DATABASE_URL=mysql://archetype:<password>@0.0.0.0:3307/archetype_production
-```
-3. Use `cargo` to build and run:
+4. Use `cargo` to build and run:
 ```bash
 cargo run
+```
+
+## MacOS
+1. Install MySQL using homebrew: `brew install mysql`
+2. Point the `docker-compose.yml` file to the macos variant: `ln -s docker-compose.mac.yml docker-compose.yml`
+3.  Copy the `.env.sample` file to `.env.test`: `cp .env.sample .env.test`.
+4. Start the MySQL database using docker (you may want to change the defaults in `.env.test`):
+```bash
+docker-compose up db
+```
+5. Use `cargo` to build and run:
+```bash
+source .env.test && cargo run
 ```

@@ -1,6 +1,6 @@
 [package]
 name = "archetype"
-version = "1.0.6"
+version = "1.0.7"
 edition = "2018"
 
 [[bin]]
@@ -23,6 +23,7 @@ base64 = "0.13.0"
 infer = "0.3"
 chrono = "0.4.19"
 regex = "1.5.5"
+clap = { version = "4.3.19", features = ["derive"] }
 
 [dependencies.rocket]
 version = "0.5.0-rc.2"

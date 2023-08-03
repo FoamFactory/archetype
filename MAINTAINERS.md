@@ -23,8 +23,8 @@ likely will not be able to check).
 
 Next, tag the image for docker:
 ```
-docker image tag archetype_web_service:latest jwir3/archetype_web:X.Y.Z
-docker image tag archetype_web_service:latest jwir3/archetype_web:latest
+docker image tag archetype-web_service:latest jwir3/archetype_web:X.Y.Z
+docker image tag archetype-web_service:latest jwir3/archetype_web:latest
 ```
 
 Finally, push the image to docker hub:
